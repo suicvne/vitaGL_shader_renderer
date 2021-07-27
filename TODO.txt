@@ -1,0 +1,5 @@
+- Test loading multiple textures and binding & 
+  switching between multiple textures during draw calls.
+- Fully translate the GLSL to CG code.
+- Clean up the code across 1-2 smaller source files.
+- Add rules to compile as a small library? 
