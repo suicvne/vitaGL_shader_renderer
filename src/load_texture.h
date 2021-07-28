@@ -63,7 +63,7 @@ static inline GLuint Vita_LoadTextureGL(void* buffer,
                     0, 
                     GL_RGBA, GL_UNSIGNED_BYTE, (const GLvoid*)(buffer));
 
-    debugPrintf("[load_texture] OK!\n");
+    debugPrintf("[load_texture] OK! GLuint: %zu\n", returnValue);
     return returnValue;
 }
 
