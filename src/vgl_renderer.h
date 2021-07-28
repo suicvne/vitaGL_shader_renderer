@@ -47,6 +47,12 @@ typedef struct _DrawCall
 {
     struct _vert verts[VERTICES_PER_PRIM];
     GLuint textureID;
+    float piv_x;
+    float piv_y;
+    float rot_x; 
+    float rot_y; 
+    float rot_z;
+    float scale;
 } __attribute__ ((packed)) DrawCall;
 
 static const char* GLINVALIDENUM = "GL_INVALID_ENUM";
@@ -93,6 +99,15 @@ static inline void CHECK_GL_ERROR(char* prefix)
         GET_GL_ERROR(gl_error, error_buffer);
         printf("[%s] OPENGL ERROR: %s\n", prefix, error_buffer);
     }
+
+#ifndef VITA
+    memset(error_buffer, 0, sizeof(error_buffer));
+    const char* _eb = (char*)error_buffer;
+    if(glfwGetError(&_eb))
+    {
+        printf("\t\tGLFW: %s", error_buffer);
+    }
+#endif
 }
 
 static inline void pLogDebug(const char* a, ...)
@@ -147,6 +162,70 @@ void clear();
 void repaint();
 
 void Vita_Draw(float x, float y, float wDst, float hDst);
+
+void Vita_DrawRectColorRot(float x, float y,
+                           float wDst, float hDst,
+                           float rot,
+                           float _r,
+                           float _g,
+                           float _b,
+                           float _a);
+
+void Vita_DrawTextureAnimColorRotScale(
+    float x,
+    float y,
+    float wDst,
+    float hDst,
+    GLuint texId,
+    float tex_w,
+    float tex_h,
+    float src_x,
+    float src_y,
+    float src_w,
+    float src_h,
+    float _r,
+    float _g,
+    float _b,
+    float _a,
+    float _rot,
+    float _scale
+);
+
+void Vita_DrawTextureAnimColorRot(
+    float x,
+    float y,
+    float wDst,
+    float hDst,
+    GLuint texId,
+    float tex_w,
+    float tex_h,
+    float src_x,
+    float src_y,
+    float src_w,
+    float src_h,
+    float _r,
+    float _g,
+    float _b,
+    float _a,
+    float _rot
+);
+
+void Vita_DrawTextureAnimColor(
+    float x,
+    float y,
+    float wDst,
+    float hDst,
+    GLuint texId,
+    float tex_w,
+    float tex_h,
+    float src_x,
+    float src_y,
+    float src_w,
+    float src_h,
+    float _r,
+    float _g,
+    float _b,
+    float _a);
 
 // ------------------------------------- End Functions for the public
 
