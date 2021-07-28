@@ -132,26 +132,6 @@ _Vita_WriteVertices4xColor(DrawCall *drawCall,
     drawCall->verts[3]._g = rgba3[1];
     drawCall->verts[3]._b = rgba3[2];
     drawCall->verts[3]._a = rgba3[3];
-
-    // drawCall->verts[0]._r = 1.0f;
-    // drawCall->verts[0]._g = 0.5f;
-    // drawCall->verts[0]._b = 0.f;
-    // drawCall->verts[0]._a = 1.0f;
-
-    // drawCall->verts[1]._r = 1.0f;
-    // drawCall->verts[1]._g = 0.f;
-    // drawCall->verts[1]._b = 0.5f;
-    // drawCall->verts[1]._a = 1.0f;
-
-    // drawCall->verts[2]._r = 0.0f;
-    // drawCall->verts[2]._g = 1.f;
-    // drawCall->verts[2]._b = 0.f;
-    // drawCall->verts[2]._a = 1.0f;
-
-    // drawCall->verts[3]._r = 1.0f;
-    // drawCall->verts[3]._g = 0.f;
-    // drawCall->verts[3]._b = 1.f;
-    // drawCall->verts[3]._a = 1.0f;
 }
 
 static inline void 
@@ -183,7 +163,12 @@ void Vita_DrawRect4xColor(float x, float y,
                           float rgba2[4],
                           float rgba3[4])
 {
-    
+    DrawCall *_curDrawCall = _Vita_GetAvailableDrawCall();
+    if(_curDrawCall == 0) {return;}
+
+    _Vita_WriteVertices4xColor(_curDrawCall, x, y, wDst, hDst, 0.f, 1.f, 0.f, 1.f, rgba0, rgba1, rgba2, rgba3);
+
+    _Vita_DoneWithDrawCall();
 }
 
 void Vita_DrawRectColor(float x, float y,
@@ -223,11 +208,10 @@ void Vita_DrawRectColorRot(float x, float y,
 }
 
 
-void
-Vita_Draw(float x,
-          float y,
-          float wDst,
-          float hDst)
+void Vita_Draw(float x,
+               float y,
+               float wDst,
+               float hDst)
 {
     
     DrawCall *_curDrawCall = _Vita_GetAvailableDrawCall();
@@ -240,24 +224,23 @@ Vita_Draw(float x,
 }
 
 void Vita_DrawTextureAnimColorRotScale(
-    float x,
-    float y,
-    float wDst,
-    float hDst,
-    GLuint texId,
-    float tex_w,
-    float tex_h,
-    float src_x,
-    float src_y,
-    float src_w,
-    float src_h,
-    float _r,
-    float _g,
-    float _b,
-    float _a,
-    float _rot,
-    float _scale
-)
+        float x,
+        float y,
+        float wDst,
+        float hDst,
+        GLuint texId,
+        float tex_w,
+        float tex_h,
+        float src_x,
+        float src_y,
+        float src_w,
+        float src_h,
+        float _r,
+        float _g,
+        float _b,
+        float _a,
+        float _rot,
+        float _scale)
 {
     DrawCall *_curDrawCall = _Vita_GetAvailableDrawCall();
     if(_curDrawCall == NULL) return;
@@ -294,43 +277,42 @@ void Vita_DrawTextureAnimColorRotScale(
 }
 
 void Vita_DrawTextureAnimColorRot(
-    float x,
-    float y,
-    float wDst,
-    float hDst,
-    GLuint texId,
-    float tex_w,
-    float tex_h,
-    float src_x,
-    float src_y,
-    float src_w,
-    float src_h,
-    float _r,
-    float _g,
-    float _b,
-    float _a,
-    float _rot
-)
+        float x,
+        float y,
+        float wDst,
+        float hDst,
+        GLuint texId,
+        float tex_w,
+        float tex_h,
+        float src_x,
+        float src_y,
+        float src_w,
+        float src_h,
+        float _r,
+        float _g,
+        float _b,
+        float _a,
+        float _rot)
 {
     Vita_DrawTextureAnimColorRotScale(x, y, wDst, hDst, texId, tex_w, tex_h, src_x, src_y, src_w, src_h, _r, _g, _b, _a, _rot, 1.f);
 }
 
 void Vita_DrawTextureAnimColor(
-    float x,
-    float y,
-    float wDst,
-    float hDst,
-    GLuint texId,
-    float tex_w,
-    float tex_h,
-    float src_x,
-    float src_y,
-    float src_w,
-    float src_h,
-    float _r,
-    float _g,
-    float _b,
-    float _a)
+        float x,
+        float y,
+        float wDst,
+        float hDst,
+        GLuint texId,
+        float tex_w,
+        float tex_h,
+        float src_x,
+        float src_y,
+        float src_w,
+        float src_h,
+        float _r,
+        float _g,
+        float _b,
+        float _a)
 {
     Vita_DrawTextureAnimColorRot(x, y, wDst, hDst, texId, tex_w, tex_h, src_x, src_y, src_w, src_h, _r, _g, _b, _a, 0.f);
 }

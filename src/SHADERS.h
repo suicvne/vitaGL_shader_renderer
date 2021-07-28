@@ -5,15 +5,31 @@
 
 static const char vShaderString[] = 
     "void main(\n"
-    " float3 aPosition,\n"
+    " float2 aPosition,\n"
+    " float2 vTexCoord,\n"
+    " float4 vColor\n"
+    " uniform float4x4 mvp\n"
+    " uniform float4x4 _rot\n"
+    " uniform float4x4 _scale\n"
+    " float4 out fragColor\n"
+    " float2 out texCoord\n"
     " float4 out vPosition: POSITION)\n"
     "{\n"
-    "vPosition = float4(aPosition, 1.f);\n"
+    "   vPosition = float4(aPosition, 1.f);\n"
+    "   fragColor = vColor;\n"
+    "   texCoord = vTexCoord;\n"
     "}\n";
 
 static const char vFragmentString[] =   
-    "float4 main(uniform float4 color) : COLOR\n"
-    "{return float4(1.0f, 0.0f, 0.0f, 1.0f);}\n";
+    "float4 main(\n"
+    "   float4 in fragColor,\n"
+    "   float2 in texColor,\n"
+    "   uniform bool useTexture,\n"
+    "   sampler2D ourTexture\n"
+    ") : COLOR\n"
+    "{\n"
+    "   return float4(1.0f, 0.0f, 0.0f, 1.0f);\n"
+    "}\n";
 
 #else
 
