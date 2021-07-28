@@ -52,6 +52,7 @@ endif()
 
 add_executable(${PROJECT_NAME}
   src/main.c
+  src/vgl_renderer.c
 )
 
 if(BUILD_VITA)
