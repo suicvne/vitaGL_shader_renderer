@@ -1,6 +1,7 @@
 #ifndef __VGL_RENDERER_H__
 #define __VGL_RENDERER_H__
 
+
 #ifdef __APPLE__
 #include <GL/glew.h>
 #include <OpenGL/glu.h>
@@ -103,7 +104,7 @@ static inline void _printGLVersion()
 {
     GLenum enums[] = { GL_VERSION, GL_SHADING_LANGUAGE_VERSION, GL_VENDOR, GL_RENDERER };
 
-    const char* temp_gl_string;
+    const unsigned char* temp_gl_string;
     for(int i = 0; i < 4; i++)
     {
         temp_gl_string = glGetString(enums[i]);
@@ -139,6 +140,7 @@ static inline void _printGLVersion()
 int initGL();
 int initGLAdv();
 int initGLShading();
+int deInitGL();
 
 // TODO: Function prefixes for these.
 void clear();
@@ -148,4 +150,4 @@ void Vita_Draw(float x, float y, float wDst, float hDst);
 
 // ------------------------------------- End Functions for the public
 
-#endif __VGL_RENDERER_H__
+#endif //__VGL_RENDERER_H__

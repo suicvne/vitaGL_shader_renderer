@@ -2,6 +2,7 @@
 #include <math.h>
 
 #include "vgl_renderer.h"
+#include "load_texture.h"
 
 #define DISPLAY_WIDTH_DEF 960.f
 #define DISPLAY_HEIGHT_DEF 544.f
@@ -9,6 +10,8 @@
 
 const GLint _scr_offset_x = (DISPLAY_WIDTH_DEF);
 const GLint _scr_offset_y = (DISPLAY_HEIGHT_DEF);
+
+static GLuint Texture_1 = 0;
 
 float _ticks = 0;
 
@@ -25,6 +28,20 @@ int main()
     }
     
     initGLAdv();
+
+    void* tex_buffer = malloc(8);
+    int w = 0, h = 0, channels = 0;
+
+    Vita_LoadTextureBuffer("bobomb_red.png", &tex_buffer, &w, &h, &channels, (void*)printf);
+    printf("[main] tex_buffer: %x, %p", tex_buffer, tex_buffer);
+
+    Texture_1 = Vita_LoadTextureGL(tex_buffer, w, h, (void*)printf);
+    if(Texture_1 == 0)
+    {
+        printf("Texture_1 failed to load: Returned %d for ID.\n", Texture_1);
+        deInitGL();
+        return -1;
+    }
     
 
     int run = 1;

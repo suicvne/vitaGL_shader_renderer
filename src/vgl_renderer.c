@@ -103,7 +103,7 @@ Vita_Draw(float x,
 {
     if((_vgl_pending_offset + 1) > _vgl_pending_total_size)
     {
-        printf("Ran out of draw calls. %d / %d\n", _vgl_pending_offset, _vgl_pending_total_size);
+        printf("Ran out of draw calls. %d / %zu\n", _vgl_pending_offset, _vgl_pending_total_size);
         return;
     }
     DrawCall *_curDrawCall = (_vgl_pending_calls + _vgl_pending_offset);
@@ -311,6 +311,8 @@ int deInitGL()
 #else
     glfwTerminate();
 #endif
+
+    return 0;
 }
 
 static void glfwError(int id, const char* description)
@@ -452,7 +454,7 @@ void repaint()
 
             // memory address of our current draw call's vertices. we upload them as is thanks to C-structs!
             void *vertexPtr = &(calls[i].verts); 
-// /*
+/*
             printf("writing (size of calls[i].verts: %d) (size: %d; offset: %d) vertexPtr: %p\n", sizeof(calls[i].verts), sizeCopy, offset, vertexPtr);
             printf("\t%.2f, %.2f\n\t%.2f, %.2f\n\t%.2f, %.2f\n\t%.2f, %.2f\n", 
                 ((struct _vert*)vertexPtr)->x, ((struct _vert*)vertexPtr)->y,
@@ -460,7 +462,7 @@ void repaint()
                 ((struct _vert*)vertexPtr + 2)->x, ((struct _vert*)vertexPtr + 2)->y,
                 ((struct _vert*)vertexPtr + 3)->x, ((struct _vert*)vertexPtr + 3)->y
             );
-// */
+*/
 
             // The magic.
             // We buffer in `sizeCopy` bytes at `offset` from our `vertexPtr`
@@ -471,7 +473,7 @@ void repaint()
             CHECK_GL_ERROR("buffersub");
         }
 
-        printf("Handled %d drawcalls. (%d vertice count)\n", draw_calls, draw_calls * VERTICES_PER_QUAD);
+        // printf("Handled %d drawcalls. (%d vertice count)\n", draw_calls, draw_calls * VERTICES_PER_QUAD);
     }
 
 // TODO: Is this necessary? Our _vbo should still be bound.
