@@ -27,7 +27,7 @@ set(VITA_VERSION  "01.00")
 
 if(BUILD_VITA)
   set(VITA_MKSFOEX_FLAGS "${VITA_MKSFOEX_FLAGS} -d PARENTAL_LEVEL=1")
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DVITA -Wall -fno-lto -ftree-vectorize")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DVITA -g -O0 -Wall -fno-lto -ftree-vectorize")
 else()
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}  -g -O0 -fno-lto -ftree-vectorize")  
 endif()
