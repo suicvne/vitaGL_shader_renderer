@@ -2,9 +2,15 @@
 #define __VGL_RENDERER_H__
 
 
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(PC_BUILD) 
 #include <GL/glew.h>
+
+#ifndef __APPLE__
+#include <GL/gl.h>
+#else
 #include <OpenGL/glu.h>
+#endif
+
 #include <GLFW/glfw3.h>
 #else
 #include <vitasdk.h>

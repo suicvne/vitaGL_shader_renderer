@@ -37,7 +37,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 # Resource Handling
 
-file(GLOB_RECURSE resources "res/*.png" "res/*.frag" "res/*.vert" "res/*.glsl")
+file(GLOB_RECURSE resources "./*.png" "res/*.png" "res/*.frag" "res/*.vert" "res/*.glsl")
 set(data_VPKSHADOW "")
 if(BUILD_VITA)
   foreach(resource ${resources})
@@ -123,6 +123,44 @@ if(APPLE)
     ${GLFW}
     GLEW::glew
   )
+elseif(UNIX)
+  message("LINUX!")
+  
+  find_library(GLFW glfw)
+  find_library(LIBPNG png)
+  find_library(CGLM cglm)
+  find_package(GLEW REQUIRED)
+  
+  
+  if(NOT GLFW)
+    message(FATAL_ERROR "GLFW not found.")
+  endif()
+
+  if(NOT LIBPNG)
+    message(FATAL_ERROR "libpng not found!")
+  endif()
+
+  if(NOT CGLM)
+    message(FATAL_ERROR "cglm not found!")
+  endif()
+
+
+  if(GLEW_FOUND)
+    message( "GLEW found! GLEW for you!")
+  endif()
+  
+  target_compile_definitions(${PROJECT_NAME} PUBLIC PC_BUILD)
+  target_include_directories(${PROJECT_NAME} PUBLIC ${GLEW_INCLUDE_DIRS})
+  
+  target_link_libraries(${PROJECT_NAME}
+    z
+    m
+    ${GLFW}
+    GLEW::glew
+    GLU
+    GL
+  )
+  
 endif()
 
 # in VitaSDK, you don't specify SceLibc heapsize with -h, you do it by

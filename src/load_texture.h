@@ -13,15 +13,20 @@
 #include "stb_image.h"
 
 
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(PC_BUILD) 
 #include <GL/glew.h>
+
+#ifndef __APPLE__
+#include <GL/gl.h>
+#else
 #include <OpenGL/glu.h>
+#endif
+
 #include <GLFW/glfw3.h>
 #else
 #include <vitasdk.h>
 #include <vitaGL.h>
 #endif
-
 
 /**
  * Vita_LoadTextureGL:
@@ -42,9 +47,9 @@ static inline GLuint Vita_LoadTextureGL(void* buffer,
         if(buffer == 0)
             debugPrintf("[load_texture] buffer == 0. (%x, %p)\n", buffer, buffer);
         if(width <= 0)
-            debugPrintf("[load_texture] Width <= 0 (%.2f)", width);
+            debugPrintf("[load_texture] Width <= 0 (%.2f)\n", width);
         if(height <= 0)
-            debugPrintf("[load_texture] Height <= 0 (%.2f)", height);
+            debugPrintf("[load_texture] Height <= 0 (%.2f)\n", height);
 
         return 0;
     }
@@ -63,7 +68,7 @@ static inline GLuint Vita_LoadTextureGL(void* buffer,
                     0, 
                     GL_RGBA, GL_UNSIGNED_BYTE, (const GLvoid*)(buffer));
 
-    debugPrintf("[load_texture] OK! GLuint: %zu\n", returnValue);
+    debugPrintf("[load_texture] OK! GLuint: %u\n", returnValue);
     return returnValue;
 }
 

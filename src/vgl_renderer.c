@@ -355,7 +355,8 @@ GLuint LoadShader(GLenum type, const char *shaderSrc)
 
     if(!compiled)
     {   
-        printf("NOT COMPILED.\n");
+        
+        printf("%s NOT COMPILED.\n", (type == GL_VERTEX_SHADER ? "Vertex Shader" : "Fragment Shader"));
         GLint infoLen = 0;
         glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &infoLen);
 
@@ -440,8 +441,21 @@ int initGLShading()
     
 #ifdef VITA
     VERTEX_POS_INDEX = glGetAttribLocation(programObjectID, "aPosition");
+    VERTEX_TEXCOORD_INDEX = glGetAttribLocation(programObjectID, "vTexCoord");
+    VERTEX_COLOR_INDEX = glGetAttribLocation(programObjectID, "vColor");
     // TODO: mvp mat4 for CG shader
     // TODO: color float4 for CG shader.
+    // Uniforms
+    VERTEX_MVP_INDEX = glGetUniformLocation(programObjectID, "mvp"); // MVP matrix. In our case, this is an ortho matrix for the Vita's screen.
+
+    UNIFORM_ROTMAT_INDEX = glGetUniformLocation(programObjectID, "_rot");
+    UNIFORM_SCALE_INDEX = glGetUniformLocation(programObjectID, "_scale");
+    
+    glm_mat4_identity(_rot);
+    glm_mat4_identity(_rot_arb);
+
+    glm_mat4_identity(_scale);
+    glm_mat4_identity(_scale_arb);
 #else
     // Attribs
     VERTEX_POS_INDEX = glGetAttribLocation(programObjectID, "vPosition"); // Vertex position.

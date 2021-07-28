@@ -93,6 +93,11 @@ void render_entities()
     }
 }
 
+#ifdef VITA
+static const char *_texture_1_path = "app0:bobomb_red.png";
+#else
+static const char *_texture_1_path = "../bobomb_red.png";
+#endif
 int main()
 {
     initGL();
@@ -107,10 +112,10 @@ int main()
     
     initGLAdv();
 
-    void* tex_buffer = malloc(2);
+    void* tex_buffer = malloc(8);
     int channels = 0;
 
-    Vita_LoadTextureBuffer("bobomb_red.png", &tex_buffer, &_tex_1_w, &_tex_1_h, &channels, (void*)printf);
+    Vita_LoadTextureBuffer(_texture_1_path, &tex_buffer, &_tex_1_w, &_tex_1_h, &channels, (void*)printf);
     printf("[main] tex_buffer: %p\n", tex_buffer);
 
     Texture_1 = Vita_LoadTextureGL(tex_buffer, _tex_1_w, _tex_1_h, (void*)printf);
