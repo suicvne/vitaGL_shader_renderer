@@ -508,7 +508,7 @@ int initGLShading2(char* _vShaderString, char* _fShaderString)
 
 int initGLShading()
 {
-    return initGLShading2(vShaderString, vFragmentString);
+    return initGLShading2((char *)vShaderString, (char *)vFragmentString);
 }
 
 int initGLAdv()
@@ -529,7 +529,7 @@ int initGLAdv()
 
     // Initial data buffer
     glBufferData(GL_ARRAY_BUFFER, _vgl_pending_total_size, 0, GL_DYNAMIC_DRAW);
-    printf("Initial Buffer Data with %d bytes (%.2f MB)\n", _vgl_pending_total_size, (_vgl_pending_total_size / 1024.f) / 1024.f);
+    printf("Initial Buffer Data with %ld bytes (%.2f MB)\n", _vgl_pending_total_size, (_vgl_pending_total_size / 1024.f) / 1024.f);
     CHECK_GL_ERROR("INITIAL BUFFER DATA");
 
     return 0;
@@ -569,9 +569,8 @@ int initGL()
     }
     printf("[main] GLFWInit: %d\n", glfwReturnVal);
 
-    printf("Window Pointer B4: %x\n", _game_window);
     _game_window = glfwCreateWindow(960,544,"Test", 0, 0);
-    printf("Window Pointer: %x\n", _game_window);
+    printf("Window Pointer: %p\n", _game_window);
     glfwMakeContextCurrent(_game_window);
 
     
@@ -583,7 +582,6 @@ int initGL()
         return -1;
     }
     printf("[main] GLEWInit: %d\n", glewReturnVal);
-    printf("Window Pointer BEFORE RETURN: %x\n", _game_window);
 #endif
 
     glClearColor(.1f, .5f, .1f, 1.0f);
