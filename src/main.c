@@ -1,9 +1,15 @@
 #include <stdio.h>
 #include <math.h>
+#include <assert.h>
+
+#define __BASIC_MAP_IMPL_
+#include "basic_hash_map.h"
+
 
 #include "vgl_renderer.h"
 #include "load_texture.h"
 #include "SHADERS.h"
+
 
 #define DISPLAY_WIDTH_DEF 960.f
 #define DISPLAY_HEIGHT_DEF 544.f
@@ -103,8 +109,62 @@ static const char *_texture_1_path = "../bobomb_red.png";
 static const char *_vertex_shader = "../vert.glsl";
 static const char *_frag_shader = "../frag.glsl";
 #endif
+
+
+
+
+
+int bm_test()
+{
+    const int map_size = 8;
+    bm_map_t *new_map = create_basic_map(map_size);
+
+    assert(new_map != NULL);
+    assert(new_map->__last_id == 0);
+    assert(new_map->tracked_elements == 0);
+    assert(new_map->max_elements == map_size);
+    assert(new_map->map != NULL);
+
+    
+    bm_key_t *test_key = put_basic_map(new_map, (void *)_frag_shader);
+    assert(test_key != NULL);
+    printf("[bm_test] test_key->id is %u\n", test_key->id);
+    // assert(test_key->id > -1);
+    assert(test_key->obj_ptr != NULL);
+    assert(((const char*)test_key->obj_ptr) == _frag_shader);
+    printf("[bm_test] String value of test_key ptr: `%s`\n", (const char*)(test_key->obj_ptr));
+    assert(new_map->tracked_elements > 0);
+    assert(new_map->tracked_elements != new_map->max_elements);
+
+    bm_key_t *test_key_2 = get_at_basic_map(new_map, 0);
+    assert(test_key_2 != NULL);
+    assert(test_key_2->id == test_key->id);
+    assert(test_key_2->obj_ptr == test_key->obj_ptr);
+
+    bm_key_t *test_key_3 = get_by_id_basic_map(new_map, test_key->id);
+
+    assert(test_key_3 != NULL);
+    assert(test_key_3->id == test_key->id);
+    assert(test_key_3->obj_ptr == test_key->obj_ptr);
+
+    return 0;
+}
+
+
+
+
+
+
+
+
+
+
 int main()
 {
+    bm_test();
+    assert(sizeof(uint32_t) == sizeof(float));
+    printf("sizeof(void*) = %lu\n\tsizeof(float) = %lu\n", sizeof(void*), sizeof(float));
+
     initGL();
 
     int retVal = 0;
