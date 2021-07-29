@@ -39,7 +39,7 @@ static unsigned int _DrawCalls = 0; // DRAW CALL COUNT
 // ------------------------------------------ END SHADERS 
 
 // ------------------------------------------   BUFFERS
-static GLint _vertexBufferID;
+static GLuint _vertexBufferID;
 // ------------------------------------------ END BUFFERS
 
 // ------------------------------------------   SHADERS
@@ -416,15 +416,6 @@ int initGLShading()
     glAttachShader(programObjectID, fragmentShaderID);  
     CHECK_GL_ERROR("Frag Shader Attach");
 
-// TODO: this wasn't really needed, since we're allowing 
-// flexibility by grabbing the locations when we compile the shader.
-#ifdef VITA
-    glBindAttribLocation(programObjectID, 0 /*VERTEX_POSITION_INDEX*/, "aPosition");
-#else
-    glBindAttribLocation(programObjectID, 0, "vPosition");
-#endif
-    CHECK_GL_ERROR("Bind Attrib Location Shader");
-
     glLinkProgram(programObjectID);
     CHECK_GL_ERROR("LINK PROGRRAM");
 
@@ -476,7 +467,7 @@ int initGLShading()
     
     // TODO: vec2 for texcoords.
 #endif
-    
+#ifndef VITA
     if(VERTEX_POS_INDEX <= -1)
     {
         printf("VERTEX_POS_INDEX returned invalid value: %d\n", VERTEX_POS_INDEX);
@@ -504,11 +495,12 @@ int initGLShading()
         return -1;
     }
     CHECK_GL_ERROR("VERTEX_COLOR_INDEX");
-
+#endif
     printf(
         "[Attrib Location Report]\n\nVERTEX_POS_INDEX: %d\nVERTEX_TEXCOORD_INDEX: %d\nVERTEX_MVP_INDEX: %d\nVERTEX_COLOR_INDEX: %d\n",
         VERTEX_POS_INDEX, VERTEX_TEXCOORD_INDEX, VERTEX_MVP_INDEX, VERTEX_COLOR_INDEX
     );
+
     
     return 0;
 }
@@ -533,6 +525,8 @@ int initGLAdv()
     glBufferData(GL_ARRAY_BUFFER, _vgl_pending_total_size, 0, GL_DYNAMIC_DRAW);
     printf("Initial Buffer Data with %d bytes (%.2f MB)\n", _vgl_pending_total_size, (_vgl_pending_total_size / 1024.f) / 1024.f);
     CHECK_GL_ERROR("INITIAL BUFFER DATA");
+
+    return 0;
 }
 
 int deInitGL()
@@ -592,14 +586,14 @@ int initGL()
     glEnable(GL_BLEND);
     glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glOrtho(0, DISPLAY_WIDTH, DISPLAY_HEIGHT, 0, -1, 1);
+    // glMatrixMode(GL_PROJECTION);
+    // glLoadIdentity();
+    // glOrtho(0, DISPLAY_WIDTH, DISPLAY_HEIGHT, 0, -1, 1);
 
     glm_ortho_lh_zo(0, DISPLAY_WIDTH, DISPLAY_HEIGHT, 0, -1, 1, cpu_mvp);
 
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
+    // glMatrixMode(GL_MODELVIEW);
+    // glLoadIdentity();
 
     glViewport(
         0,
@@ -734,9 +728,6 @@ void repaint()
     glUniformMatrix4fv(VERTEX_MVP_INDEX, 1, GL_FALSE, (const GLfloat*)cpu_mvp);
     CHECK_GL_ERROR("glUniformMatrix4fv");
 
-    // glUniform4f(fColorProp, (rand() % 255) / 255.f, (rand() % 255) / 255.f, rand() * 1.0f, 1.0f);
-    // CHECK_GL_ERROR("glUniform4f");
-
     // This is a "hack around".
     // Ideally, I'd be able to batch this all at once.
     int i;
@@ -752,20 +743,20 @@ void repaint()
         // from what's currently bound.
         if(_curBoundTex != _curDrawCall.textureID)
         {
+        
             if(_curDrawCall.textureID == 0)
                 glUniform1i(_locUseTexture, 0);
             else
                 glUniform1i(_locUseTexture, 1);
             
-            // printf("[vgl_renderer] repaint(): TODO change bind texture from id %u to id %u\n", _curBoundTex, _curDrawCall.textureID);
+
+            printf("[vgl_renderer] repaint(): TODO change bind texture from id %u to id %u\n", _curBoundTex, _curDrawCall.textureID);
             glBindTexture(GL_TEXTURE_2D, _curDrawCall.textureID);
             _curBoundTex = _curDrawCall.textureID;
             
         }
-        
-        // glm_rotate_x(_rot, glm_rad(_curDrawCall.rot_x), _rot_arb);
-        // glm_rotate_y(_rot, glm_rad(_curDrawCall.rot_y), _rot_arb);
-        // glm_rotate_z(_rot, glm_rad(_curDrawCall.rot_y), _rot_arb);
+
+#ifndef VITA
         glm_mat4_identity(_rot_arb);
         glm_rotate_atm(
             _rot_arb, 
@@ -773,16 +764,7 @@ void repaint()
             glm_rad(_curDrawCall.rot_z), 
             (vec3){0.f, 0.f, 1.f}
         );
-/*
-        glm::vec3 refVector(pivotx, pivoty, pivotz);
 
-    glm::mat4 TransRefToOrigin   = glm::translate(glm::mat4(1.0f), -refVector);
-    glm::mat4 TransRefFromOrigin = glm::translate(glm::mat4(1.0f),  refVector);
-
-    glm::vec3 scale = glm::vec3(scax, scay, scaz);
-    glm::mat4 TransformationScale = glm::scale(glm::mat4(1.0), scale);
-    return TransRefFromOrigin * TransformationScale * TransRefToOrigin;
-*/
         vec3 refVector = {_curDrawCall.piv_x, _curDrawCall.piv_y, 0.f};
         vec3 nRefVector = {-_curDrawCall.piv_x, -_curDrawCall.piv_y, 0.f};
 
@@ -803,13 +785,13 @@ void repaint()
 
         glUniformMatrix4fv(UNIFORM_SCALE_INDEX, 1, GL_FALSE, (const GLfloat *)_scale_arb);
         glUniformMatrix4fv(UNIFORM_ROTMAT_INDEX, 1, GL_FALSE, (const GLfloat*)_rot_arb);
-        CHECK_GL_ERROR("glUniformMatrix _rot");        
-        
+        // CHECK_GL_ERROR("glUniformMatrix _rot");        
+#endif
 
         glDrawArrays(GL_TRIANGLE_STRIP, i * VERTICES_PER_PRIM, VERTICES_PER_PRIM);
 
-        glm_mat4_identity(_scale_arb);
-        glm_mat4_identity(_rot_arb);
+        // glm_mat4_identity(_scale_arb);
+        // glm_mat4_identity(_rot_arb);
     }
 
     
@@ -826,9 +808,12 @@ void repaint()
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glUseProgram(0);
 
+    glFlush();
+    glFinish();
+
 FINISH_DRAWING:
 #ifdef VITA
-    vglSwapBuffers(GL_FALSE);
+    vglSwapBuffers(GL_TRUE);
 #else
     glfwSwapBuffers(_game_window);
     glfwPollEvents();

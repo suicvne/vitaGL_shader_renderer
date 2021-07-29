@@ -3,38 +3,55 @@
 
 #ifdef VITA
 
+#if 0
 static const char vShaderString[] = 
     "void main(\n"
     " float2 aPosition,\n"
-    " float2 vTexCoord,\n"
-    " float4 vColor,\n"
-    " uniform float4x4 mvp,\n"
-    " uniform float4x4 _rot,\n"
-    " uniform float4x4 _scale,\n"
-    " float4 out vertPos : POSITION,\n"
-    " float4 out fragColor : COLOR,\n"
-    " float2 out texCoord : TEXCOORD0\n"
+    // " float2 vTexCoord,\n"
+    // " float4 vColor,\n"
+    // " uniform float4x4 mvp,\n"
+    // " uniform float4x4 _rot,\n"
+    // " uniform float4x4 _scale,\n"
+    " float4 out vertPos : POSITION\n"
+    // " float4 out fragColor : COLOR,\n"
+    // " float2 out texCoord : TEXCOORD0\n"
     ")\n"
     "{\n"
-    "   float4x4 temp = mul(mvp, _rot);\n"
-    "   temp = mul(temp, _scale);"
-    "   vertPos = mul(temp, float4(aPosition, 1.f, 1.f));\n"
-    "   fragColor = vColor;\n"
-    "   texCoord = vTexCoord;\n"
+    // "   float4x4 temp = mul(mvp, _rot);\n"
+    // "   temp = mul(temp, _scale);"
+    // "   vertPos = mul(temp, float4(aPosition, 1.f, 1.f));\n"
+    "   vertPos = float4(aPosition.xy, 0.f, 1.f);\n"
+    // "   fragColor = vColor;\n"
+    // "   texCoord = vTexCoord;\n"
     "}\n";
 
 static const char vFragmentString[] =   
     "float4 main(\n"
-      "float4 fragColor : COLOR,\n"
-      "float2 texCoord : TEXCOORD0,\n"
-      "uniform bool useTexture,\n"
-      "uniform sampler2D ourTexture\n"
+    //   "float4 fragColor : COLOR,\n"
+    //   "float2 texCoord : TEXCOORD0,\n"
+    //   "uniform bool useTexture\n"
+    //   "uniform sampler2D ourTexture\n"
     ") : COLOR\n"
     "{\n"
+    "   "
     "   return float4(1.0f, 0.0f, 0.0f, 1.0f);\n"
     "}\n";
-
 #else
+
+static const char vShaderString[] = 
+    "void main(\n"
+    " float3 aPosition,\n"
+    " float4 out vPosition: POSITION)\n"
+    "{\n"
+    "vPosition = float4(aPosition, 1.f);\n"
+    "}\n";
+
+static const char vFragmentString[] =   
+    "float4 main(uniform float4 color) : COLOR\n"
+    "{return float4(1.0f, 0.0f, 0.0f, 1.0f);}\n";
+#endif
+#else
+
 
 
 /*
@@ -50,7 +67,7 @@ static const char vShaderString[] =
      "attribute vec4 vColor;      \n"
      "varying vec4 fragColor;           \n"
      "varying vec2 texCoord;            \n"
-     "uniform mat4 mvp_mat;\n"
+     "uniform mat4 mvp;\n"
      "uniform mat4 _rot;\n"
      "uniform mat4 _scale;\n"
       "void main()                  \n"
