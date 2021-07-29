@@ -582,7 +582,7 @@ int initGL()
 
     glClearColor(.1f, .5f, .1f, 1.0f);
 
-    // glEnable(GL_TEXTURE_2D);
+    glEnable(GL_TEXTURE_2D);
     glEnable(GL_BLEND);
     glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
@@ -794,7 +794,7 @@ void repaint()
         // glm_mat4_identity(_rot_arb);
     }
 
-    
+    glFlush();
     
     // Revert shader state. 
     glUniform1i(_locUseTexture, 0);
@@ -808,7 +808,7 @@ void repaint()
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glUseProgram(0);
 
-    glFlush();
+    
     glFinish();
 
 FINISH_DRAWING:
