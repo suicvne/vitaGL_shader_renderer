@@ -161,6 +161,7 @@ static inline void _printGLVersion()
 int initGL();
 int initGLAdv();
 int initGLShading();
+int initGLShading2(char* vertex_shader, char* fragment_shader);
 int deInitGL();
 
 // TODO: Function prefixes for these.

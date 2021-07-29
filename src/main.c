@@ -3,6 +3,7 @@
 
 #include "vgl_renderer.h"
 #include "load_texture.h"
+#include "SHADERS.h"
 
 #define DISPLAY_WIDTH_DEF 960.f
 #define DISPLAY_HEIGHT_DEF 544.f
@@ -95,20 +96,45 @@ void render_entities()
 
 #ifdef VITA
 static const char *_texture_1_path = "app0:bobomb_red.png";
+static const char *_vertex_shader = "app0:vert.cgv";
+static const char *_frag_shader = "app0:frag.cgf";
 #else
 static const char *_texture_1_path = "../bobomb_red.png";
+static const char *_vertex_shader = "../vert.glsl";
+static const char *_frag_shader = "../frag.glsl";
 #endif
 int main()
 {
     initGL();
 
+    int retVal = 0;
+    char *vert_shader = malloc(2), *frag_shader = malloc(2);
+    size_t vert_shader_size, frag_shader_size;
+
+    retVal = _Vita_ReadShaderFromFile(_vertex_shader, &vert_shader_size, &vert_shader);
+    if(retVal != 0)
+    {
+        printf("ERROR: Could not load shader from %s\n", _vertex_shader);
+        return -1;
+    }
+
+    retVal = _Vita_ReadShaderFromFile(_frag_shader, &frag_shader_size, &frag_shader);
+    if(retVal != 0)
+    {
+        printf("ERROR: Could not load frag shader from %s\n", _frag_shader);
+        return -1;
+    }
+
     int shadingErrorCode = 0;
 
-    if((shadingErrorCode = initGLShading()) != 0)
+    if((shadingErrorCode = initGLShading2(vert_shader, frag_shader)) != 0)
     {
         printf("ERROR INIT GL SHADING! %d\n", shadingErrorCode);
         return -1;
     }
+
+    free(vert_shader);
+    free(frag_shader);
     
     initGLAdv();
 

@@ -17,8 +17,8 @@ static int DISPLAY_WIDTH = 960;
 static int DISPLAY_HEIGHT = 544;
 
 static int VERTEX_POS_INDEX = 0;
-static int VERTEX_TEXCOORD_INDEX = 1;
-static int VERTEX_COLOR_INDEX = 2;
+static int VERTEX_TEXCOORD_INDEX = 0;
+static int VERTEX_COLOR_INDEX = 0;
 static int VERTEX_MVP_INDEX = 3;
 static int UNIFORM_ROTMAT_INDEX = 4;
 static int UNIFORM_SCALE_INDEX = 5;
@@ -378,9 +378,10 @@ GLuint LoadShader(GLenum type, const char *shaderSrc)
 
 // ------------------------------------------    INIT FUNCTIONS
 
-int initGLShading()
+int initGLShading2(char* _vShaderString, char* _fShaderString)
 {
-    vertexShaderID = LoadShader(GL_VERTEX_SHADER, vShaderString);
+    printf("(NOTE): Init GL Shading 2. Initializing GL Shading with shader strings passed to us externally (by the user).\n");
+    vertexShaderID = LoadShader(GL_VERTEX_SHADER, _vShaderString);
     if(vertexShaderID == 0)
     {
         printf("ERROR: vertex shader ID: %d\n", vertexShaderID);
@@ -390,7 +391,7 @@ int initGLShading()
 
     CHECK_GL_ERROR("Vertex Shader");
 
-    fragmentShaderID = LoadShader(GL_FRAGMENT_SHADER, vFragmentString);
+    fragmentShaderID = LoadShader(GL_FRAGMENT_SHADER, _fShaderString);
     if(fragmentShaderID == 0)
     {
         printf("ERROR: frag shader ID: %d\n", fragmentShaderID);
@@ -503,6 +504,11 @@ int initGLShading()
 
     
     return 0;
+}
+
+int initGLShading()
+{
+    return initGLShading2(vShaderString, vFragmentString);
 }
 
 int initGLAdv()
@@ -750,13 +756,13 @@ void repaint()
                 glUniform1i(_locUseTexture, 1);
             
 
-            printf("[vgl_renderer] repaint(): TODO change bind texture from id %u to id %u\n", _curBoundTex, _curDrawCall.textureID);
+            // printf("[vgl_renderer] repaint(): TODO change bind texture from id %u to id %u\n", _curBoundTex, _curDrawCall.textureID);
             glBindTexture(GL_TEXTURE_2D, _curDrawCall.textureID);
             _curBoundTex = _curDrawCall.textureID;
             
         }
 
-#ifndef VITA
+
         glm_mat4_identity(_rot_arb);
         glm_rotate_atm(
             _rot_arb, 
@@ -786,7 +792,6 @@ void repaint()
         glUniformMatrix4fv(UNIFORM_SCALE_INDEX, 1, GL_FALSE, (const GLfloat *)_scale_arb);
         glUniformMatrix4fv(UNIFORM_ROTMAT_INDEX, 1, GL_FALSE, (const GLfloat*)_rot_arb);
         // CHECK_GL_ERROR("glUniformMatrix _rot");        
-#endif
 
         glDrawArrays(GL_TRIANGLE_STRIP, i * VERTICES_PER_PRIM, VERTICES_PER_PRIM);
 

@@ -1,6 +1,28 @@
 #ifndef _SHADERS_H_
 #define _SHADERS_H_
 
+#include <stdio.h>
+
+static inline int _Vita_ReadShaderFromFile(const char* path, size_t* fsize, char** buffer)
+{
+    FILE *_file = fopen(path, "r");
+
+    if(_file == NULL)
+    {
+        return -1;
+    }
+
+    fseek(_file, 0, SEEK_END);
+    *fsize = ftell(_file);
+    fseek(_file, 0, SEEK_SET);
+
+    *buffer = realloc(*buffer, *fsize);
+    fread(*buffer, *fsize, 1, _file);
+
+    fclose(_file);
+    return 0;
+}
+
 #ifdef VITA
 
 #if 1
