@@ -30,11 +30,11 @@ typedef struct _e
     float y;
     float w; 
     float h;
-    float scale;
     float speed;
     char enabled;
-    float rot_x;
-    float rot_y;
+    
+    // Contains pivot, scale, and rot data
+    obj_extra_data *ex_data;
 } _entity;
 
 _entity _test_entities[32];
@@ -50,12 +50,22 @@ void init_entities()
     {
         _test_entities[i].x = rand() % 1000;
         _test_entities[i].y = rand() % 1000;
-        _test_entities[i].scale = 1.f;
         _test_entities[i].w = (rand() % 4) * 16.f;
         _test_entities[i].h = (rand() % 4) * 16.f;
         _test_entities[i].speed = min(((rand() % 2) / 2.f) * 2.f, 1.0f);
-        _test_entities[i].rot_x = 0;
-        _test_entities[i].rot_y = 0;
+
+        // Setup ex_data
+        _test_entities[i].ex_data = (obj_extra_data *)malloc(sizeof(obj_extra_data));
+        memset(_test_entities[i].ex_data, 0, sizeof(obj_extra_data));
+        _test_entities[i].ex_data->scale = 1.f;
+    }
+}
+
+void free_entities()
+{
+    for(int i = 0; i < 32; i++)
+    {
+        free(_test_entities[i].ex_data);
     }
 }
 
@@ -66,7 +76,9 @@ void update_entities(float _ticks)
         _test_entities[i].x += (_test_entities[i].speed * ((rand() % 2) == 1 ? -1 : 1) * _ticks) / _ticks;
         _test_entities[i].y += (_test_entities[i].speed * ((rand() % 2) == 1 ? -1 : 1) * _ticks) / _ticks;
         
-        _test_entities[i].scale = sinf(_ticks * .1f) * 4.f;
+        _test_entities[i].ex_data->piv_x = _test_entities[i].x + (_test_entities[i].w * .5f);
+        _test_entities[i].ex_data->piv_y = _test_entities[i].y + (_test_entities[i].h * .5f);
+        _test_entities[i].ex_data->scale = sinf(_ticks * .1f) * 4.f;
         
 
         if(_test_entities[i].x > DISPLAY_WIDTH_DEF)
@@ -85,7 +97,7 @@ void render_entities()
 {
     for(int i = 0; i < 32; i++)
     {
-        Vita_DrawTextureAnimColorRotScale(
+        Vita_DrawTextureAnimColorExData(
             _test_entities[i].x, _test_entities[i].y,
             _test_entities[i].w, _test_entities[i].h,
             Texture_1, _tex_1_w, _tex_1_h,
@@ -94,8 +106,7 @@ void render_entities()
             fabs(sin(_ticks)),
             fabs(sin(_ticks)),
             1.f,
-            0.f,
-            _test_entities[i].scale
+            _test_entities[i].ex_data
         );
     }
 }
@@ -150,13 +161,32 @@ int bm_test()
     return 0;
 }
 
+static obj_extra_data test_data_1 = 
+(obj_extra_data)
+{
+    0,
+    256 + 128.f, 256 + 128.f,
+    0.f, 0.f, 0.f,
+    1.f
+};
 
+static obj_extra_data test_sprite_1 = 
+(obj_extra_data)
+{
+    0,
+    (DISPLAY_WIDTH_DEF / 2) + 100, (DISPLAY_HEIGHT_DEF / 2) + 100,
+    0.f, 0.f, 0.f,
+    1.f
+};
 
-
-
-
-
-
+static obj_extra_data test_sprite_2 = 
+(obj_extra_data)
+{
+    0,
+    (DISPLAY_WIDTH_DEF / 2) + 100, (DISPLAY_HEIGHT_DEF / 2) + 100,
+    0.f, 0.f, 0.f,
+    1.f
+};
 
 
 int main()
@@ -223,25 +253,17 @@ int main()
         // clear current vbo
         clear();
 
-        // for(int i = 0; i < 1000; i++)
-        // {
-        //     Vita_Draw(
-        //         (sin(_ticks) * 34) + 272.f + (sin(_ticks / 2) * (18.f * i)), 
-        //         (cos(_ticks) * 34) + 256.f + (sin(16.f) * i), 
-        //         30, 
-        //         30
-        //     );
-        // }
-
         Vita_Draw(fabs(cos(_ticks * .5f) * (300 + 0)), 0, 32, 32);
         Vita_Draw(fabs(cos(_ticks * .5f) * (300 + 20)), 32, 64, 64);
         Vita_Draw(fabs(cos(_ticks * .5f) * (300 + 40)), sin(_ticks) * (32 + 64) , 128, 128);
 
-        Vita_DrawRectColorRot(
+        test_data_1.rot_z = sin((_ticks * .2f)) * 360.f;
+
+        Vita_DrawRectColorExData(
             256.f, 256.f,
             256.f, 256.f,
-            sin((_ticks * .2f)) * 360.f,
-            1.f, 0.f, 0.f, 1.0f
+            1.f, 0.f, 0.f, 1.0f,
+            &test_data_1 // sin((_ticks * .2f)) * 360.f (rotation)
         );
 
         float _scale_w = sin(_ticks) * (64.f * 2);
@@ -249,28 +271,35 @@ int main()
         float _half_w = _scale_w * .5f;
         float _half_h = _scale_h * .5f;
 
-        Vita_DrawTextureAnimColor(
+        test_sprite_1.scale = 1;
+        test_sprite_2.scale = 1;
+
+        test_sprite_1.rot_z = sin((_ticks * .2f)) * 360.f;
+
+        Vita_DrawTextureAnimColorExData(
             (DISPLAY_WIDTH_DEF / 2) - _half_w, // screen x
             (DISPLAY_HEIGHT_DEF / 2) - _half_h, // screen y
-            _scale_w, _scale_h, // W & H on screen.
+            128.f, 128.f, // W & H on screen.
             Texture_1, _tex_1_w, _tex_1_h, // Tex ID, tex w, tex h
             0, 0, 16, 32, // Src X, Src Y, Src W, Src H
-            1.f, 1.f, 1.f, 1.f // Color
+            1.f, 1.f, 1.f, 1.f, // Color,
+            &test_sprite_1
         ); 
 
-        Vita_DrawTextureAnimColorRot(
+        Vita_DrawTextureAnimColorExData(
             (DISPLAY_WIDTH_DEF / 2) - _half_w - 100, // screen x
             (DISPLAY_HEIGHT_DEF / 2) - _half_h - 100, // screen y
             _scale_w, _scale_h, // W & H on screen.
             Texture_1, _tex_1_w, _tex_1_h, // Tex ID, tex w, tex h
             0, 0, 16, 32, // Src X, Src Y, Src W, Src H
             1.f, 1.f, 1.f, 1.f, // Color
-            sin((_ticks * .2f)) * 360.f // Rot.
+            &test_sprite_2 // sin((_ticks * .2f)) * 360.f // Rot.
         ); 
+
 
         render_entities();
 
-        Vita_DrawRectColorRot(0, 0, 9.5f, 9.5f, 0.f, 1.f, 0.f, 0.2f, 1.0f);
+        // Vita_DrawRectColorRot(0, 0, 9.5f, 9.5f, 0.f, 1.f, 0.f, 0.2f, 1.0f);
 
 
         // Draw from vbo, swap to next vbo

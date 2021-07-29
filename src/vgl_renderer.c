@@ -182,24 +182,32 @@ void Vita_DrawRectColor(float x, float y,
     Vita_DrawRect4xColor(x, y, wDst, hDst, rgba0, rgba0, rgba0, rgba0);
 }
 
-void Vita_DrawRectColorRot(float x, float y,
+void Vita_DrawRectColorExData(float x, float y,
                            float wDst, float hDst,
-                           float rot,
                            float _r,
                            float _g,
                            float _b,
-                           float _a)
+                           float _a,
+                           obj_extra_data *ex_data)
 {
     float rgba0[4] = {_r, _g, _b, _a};
     DrawCall *_curDrawCall = _Vita_GetAvailableDrawCall();
 
-    _curDrawCall->textureID = 0;
-    _curDrawCall->scale = 1.0f;
-    _curDrawCall->rot_x = 0;
-    _curDrawCall->rot_y = 0;
-    _curDrawCall->rot_z = rot;
-    _curDrawCall->piv_x = x + (wDst * .5f);
-    _curDrawCall->piv_y = y + (hDst * .5f);
+    if(ex_data != NULL)
+        ex_data->textureID = 0;
+
+    _curDrawCall->verts[0].obj_ptr = ex_data;
+    _curDrawCall->verts[1].obj_ptr = ex_data;
+    _curDrawCall->verts[2].obj_ptr = ex_data;
+    _curDrawCall->verts[3].obj_ptr = ex_data;
+
+
+    // _curDrawCall->scale = 1.0f;
+    // _curDrawCall->rot_x = 0;
+    // _curDrawCall->rot_y = 0;
+    // _curDrawCall->rot_z = rot;
+    // _curDrawCall->piv_x = x + (wDst * .5f);
+    // _curDrawCall->piv_y = y + (hDst * .5f);
 
     _Vita_WriteVertices4xColor(_curDrawCall, x, y, wDst, hDst, 1.f, 1.f, 1.f, 1.f, rgba0, rgba0, rgba0, rgba0);
 
@@ -215,14 +223,19 @@ void Vita_Draw(float x,
 {
     
     DrawCall *_curDrawCall = _Vita_GetAvailableDrawCall();
-    _curDrawCall->textureID = 0;
+    
+    for(int i = 0; i < VERTICES_PER_PRIM; i++)
+        _curDrawCall->verts[i].obj_ptr = NULL;
+#if 0
     _curDrawCall->scale = 1.0f;
+#endif
 
     _Vita_WriteVertices(_curDrawCall, x, y, wDst, hDst, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f);
     
     _Vita_DoneWithDrawCall();
 }
 
+// DEPRECATED
 void Vita_DrawTextureAnimColorRotScale(
         float x,
         float y,
@@ -245,11 +258,14 @@ void Vita_DrawTextureAnimColorRotScale(
     DrawCall *_curDrawCall = _Vita_GetAvailableDrawCall();
     if(_curDrawCall == NULL) return;
 
+    
+#if 0
     _curDrawCall->textureID = texId;
     _curDrawCall->piv_x = x + (wDst * .5f);
     _curDrawCall->piv_y = y + (hDst * .5f);
     _curDrawCall->rot_z = _rot;
     _curDrawCall->scale = _scale;
+#endif
 
 #ifdef HALF_TEX
     tex_w = float(texture.w) / float(2),
@@ -276,7 +292,7 @@ void Vita_DrawTextureAnimColorRotScale(
     _Vita_DoneWithDrawCall();
 }
 
-void Vita_DrawTextureAnimColorRot(
+void Vita_DrawTextureAnimColorExData(
         float x,
         float y,
         float wDst,
@@ -292,9 +308,43 @@ void Vita_DrawTextureAnimColorRot(
         float _g,
         float _b,
         float _a,
-        float _rot)
+        obj_extra_data *ex_data)
 {
-    Vita_DrawTextureAnimColorRotScale(x, y, wDst, hDst, texId, tex_w, tex_h, src_x, src_y, src_w, src_h, _r, _g, _b, _a, _rot, 1.f);
+
+    DrawCall *_curDrawCall = _Vita_GetAvailableDrawCall();
+    if(_curDrawCall == NULL) return;
+
+    if(ex_data != NULL && ex_data->textureID != texId)
+        ex_data->textureID = texId;
+
+    for(int i = 0; i < VERTICES_PER_PRIM; i++)
+        _curDrawCall->verts[i].obj_ptr = (void*)ex_data;
+    
+#if 0
+    _curDrawCall->piv_x = x + (wDst * .5f);
+    _curDrawCall->piv_y = y + (hDst * .5f);
+#endif
+
+    float n_src_x = (src_x / tex_w);
+    float n_src_x2 = ((src_x + src_w) / tex_w);
+    float n_src_y = (src_y / tex_h);
+    float n_src_y2 = ((src_y + src_h) / tex_h);
+
+    _Vita_WriteVertices(
+        _curDrawCall, 
+        x, 
+        y, 
+        wDst, 
+        hDst, 
+        n_src_x, 
+        n_src_x2, 
+        n_src_y, 
+        n_src_y2, 
+        _r, _g, _b, _a);
+    
+    _Vita_DoneWithDrawCall();
+
+    // Vita_DrawTextureAnimColorRotScale(x, y, wDst, hDst, texId, tex_w, tex_h, src_x, src_y, src_w, src_h, _r, _g, _b, _a, _rot, 1.f);
 }
 
 void Vita_DrawTextureAnimColor(
@@ -314,7 +364,7 @@ void Vita_DrawTextureAnimColor(
         float _b,
         float _a)
 {
-    Vita_DrawTextureAnimColorRot(x, y, wDst, hDst, texId, tex_w, tex_h, src_x, src_y, src_w, src_h, _r, _g, _b, _a, 0.f);
+    Vita_DrawTextureAnimColorExData(x, y, wDst, hDst, texId, tex_w, tex_h, src_x, src_y, src_w, src_h, _r, _g, _b, _a, NULL);
 }
 
 static GLuint Vita_GetVertexBufferID() { return _vertexBufferID; }
@@ -751,22 +801,24 @@ void repaint()
         if(_curDrawCall.verts != NULL
             && _curDrawCall.verts[0].obj_ptr != NULL)
         {
-            printf("!!!!!\t!!!!! HAS extra data ptr!\n");
+            // printf("!!!!!\t!!!!! HAS extra data ptr!\n");
+            DEBUG_PRINT_OBJ_EX_DATA(((obj_extra_data *)_curDrawCall.verts[0].obj_ptr));
+            obj_extra_data ex_data = *((obj_extra_data *)_curDrawCall.verts[0].obj_ptr); 
     
             // Only re-bind texture when it's different
             // from what's currently bound.
-            if(_curBoundTex != _curDrawCall.textureID)
+            if(_curBoundTex != ex_data.textureID)
             {
             
-                if(_curDrawCall.textureID == 0)
+                if(ex_data.textureID == 0)
                     glUniform1i(_locUseTexture, 0);
                 else
                     glUniform1i(_locUseTexture, 1);
                 
 
-                // printf("[vgl_renderer] repaint(): TODO change bind texture from id %u to id %u\n", _curBoundTex, _curDrawCall.textureID);
-                glBindTexture(GL_TEXTURE_2D, _curDrawCall.textureID);
-                _curBoundTex = _curDrawCall.textureID;
+                printf("[vgl_renderer] repaint(): TODO change bind texture from id %u to id %u\n", _curBoundTex, ex_data.textureID);
+                glBindTexture(GL_TEXTURE_2D, ex_data.textureID);
+                _curBoundTex = ex_data.textureID;
                 
             }
 
@@ -774,13 +826,13 @@ void repaint()
             glm_mat4_identity(_rot_arb);
             glm_rotate_atm(
                 _rot_arb, 
-                (vec3){_curDrawCall.piv_x, _curDrawCall.piv_y, 0.f}, 
-                glm_rad(_curDrawCall.rot_z), 
+                (vec3){ex_data.piv_x, ex_data.piv_y, 0.f}, 
+                glm_rad(ex_data.rot_z), 
                 (vec3){0.f, 0.f, 1.f}
             );
 
-            vec3 refVector = {_curDrawCall.piv_x, _curDrawCall.piv_y, 0.f};
-            vec3 nRefVector = {-_curDrawCall.piv_x, -_curDrawCall.piv_y, 0.f};
+            vec3 refVector = {ex_data.piv_x, ex_data.piv_y, 0.f};
+            vec3 nRefVector = {-ex_data.piv_x, -ex_data.piv_y, 0.f};
 
             mat4 transRefTo;
             mat4 transRefFrom;
@@ -792,8 +844,8 @@ void repaint()
             glm_mat4_identity(_temp1);
             glm_translate(transRefTo, nRefVector);
             glm_translate(transRefFrom, refVector);
-
-            glm_scale(transfScale, (vec3){_curDrawCall.scale, _curDrawCall.scale, _curDrawCall.scale});
+            
+            glm_scale(transfScale, (vec3){ex_data.scale, ex_data.scale, ex_data.scale});
             glm_mat4_mul(transRefFrom, transfScale, _temp1);
             glm_mat4_mul(_temp1, transRefTo, _scale_arb);    
         }
@@ -803,8 +855,8 @@ void repaint()
 
         glDrawArrays(GL_TRIANGLE_STRIP, i * VERTICES_PER_PRIM, VERTICES_PER_PRIM);
 
-        // glm_mat4_identity(_scale_arb);
-        // glm_mat4_identity(_rot_arb);
+        glm_mat4_identity(_scale_arb);
+        glm_mat4_identity(_rot_arb);
     }
 
     glFlush();

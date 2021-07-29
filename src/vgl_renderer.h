@@ -67,13 +67,13 @@ typedef struct _obj_extra_data
 typedef struct _DrawCall
 {
     struct _vert verts[VERTICES_PER_PRIM];
-    GLuint textureID;
-    float piv_x;
-    float piv_y;
-    float rot_x; 
-    float rot_y; 
-    float rot_z;
-    float scale;
+    // GLuint textureID;
+    // float piv_x;
+    // float piv_y;
+    // float rot_x; 
+    // float rot_y; 
+    // float rot_z;
+    // float scale;
 } __attribute__ ((packed)) DrawCall;
 
 static const char* GLINVALIDENUM = "GL_INVALID_ENUM";
@@ -83,6 +83,22 @@ static const char* GLOUTOFMEM = "GL_OUT_OF_MEMORY";
 static const char* GLSTACKUNDER = "GL_STACK_UNDERFLOW";
 static const char* GLSTACKOVER = "GL_STACK_OVERFLOW";
 static const char* GLUNKNOWN = "GL_UNKNOWN. Sorry.";
+
+static inline void DEBUG_PRINT_OBJ_EX_DATA(struct _obj_extra_data *ex_data)
+{
+    return;
+    if(ex_data == NULL) return;
+
+    printf("\tEX_DATA\n\ttex ID: %d\n\tpiv: %.2f, %.2f\n\trot: %.2f, %.2f, %.2f\n\tscale: %.2f\n\n",
+        ex_data->textureID,
+        ex_data->piv_x,
+        ex_data->piv_y,
+        ex_data->rot_x,
+        ex_data->rot_y,
+        ex_data->rot_z,
+        ex_data->scale
+    );
+}
 
 static inline void GET_GL_ERROR(GLenum error, char* output)
 {
@@ -185,14 +201,25 @@ void repaint();
 
 void Vita_Draw(float x, float y, float wDst, float hDst);
 
-void Vita_DrawRectColorRot(float x, float y,
+
+void Vita_DrawRectColor(float x, float y,
+                        float wDst, float hDst,
+                        float _r,
+                        float _g,
+                        float _b,
+                        float _a
+);
+
+void Vita_DrawRectColorExData(float x, float y,
                            float wDst, float hDst,
-                           float rot,
                            float _r,
                            float _g,
                            float _b,
-                           float _a);
+                           float _a,
+                           struct _obj_extra_data *ex_data
+);
 
+/*
 void Vita_DrawTextureAnimColorRotScale(
     float x,
     float y,
@@ -212,8 +239,12 @@ void Vita_DrawTextureAnimColorRotScale(
     float _rot,
     float _scale
 );
+*/
 
-void Vita_DrawTextureAnimColorRot(
+// Formerly Vita_DrawTextureAnimColorRot
+
+// Change to take ex data
+void Vita_DrawTextureAnimColorExData(
     float x,
     float y,
     float wDst,
@@ -229,7 +260,7 @@ void Vita_DrawTextureAnimColorRot(
     float _g,
     float _b,
     float _a,
-    float _rot
+    struct _obj_extra_data *ex_data
 );
 
 void Vita_DrawTextureAnimColor(
@@ -247,7 +278,8 @@ void Vita_DrawTextureAnimColor(
     float _r,
     float _g,
     float _b,
-    float _a);
+    float _a
+);
 
 // ------------------------------------- End Functions for the public
 
