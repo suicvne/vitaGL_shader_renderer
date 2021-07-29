@@ -189,7 +189,7 @@ static inline void _printGLVersion()
 
 // TODO: Combine the 3 inits into one init function?
 // TODO: Function prefixes.
-int initGL();
+int initGL(void (*dbgPrintFn)(const char*, ...));
 int initGLAdv();
 int initGLShading();
 int initGLShading2(char* vertex_shader, char* fragment_shader);

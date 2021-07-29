@@ -13,6 +13,8 @@
 static GLFWwindow* _game_window;
 #endif
 
+static void (*_debugPrintf)(const char*, ...);
+
 static int DISPLAY_WIDTH = 960;
 static int DISPLAY_HEIGHT = 544;
 
@@ -57,7 +59,7 @@ static inline DrawCall *_Vita_GetAvailableDrawCall()
 {
     if((_vgl_pending_offset + 1) > _vgl_pending_total_size)
     {
-        printf("Ran out of draw calls. %d / %zu\n", _vgl_pending_offset, _vgl_pending_total_size);
+        _debugPrintf("Ran out of draw calls. %d / %zu\n", _vgl_pending_offset, _vgl_pending_total_size);
         return NULL;
     }
 
@@ -394,7 +396,7 @@ GLuint LoadShader(GLenum type, const char *shaderSrc)
 
     if(shader == 0)
     { 
-        printf("!!!!!!!   Unable to create shader: shader returned ID of %d\n", shader);
+        _debugPrintf("!!!!!!!   Unable to create shader: shader returned ID of %d\n", shader);
         return 0;
     }
 
@@ -406,7 +408,7 @@ GLuint LoadShader(GLenum type, const char *shaderSrc)
     if(!compiled)
     {   
         
-        printf("%s NOT COMPILED.\n", (type == GL_VERTEX_SHADER ? "Vertex Shader" : "Fragment Shader"));
+        _debugPrintf("%s NOT COMPILED.\n", (type == GL_VERTEX_SHADER ? "Vertex Shader" : "Fragment Shader"));
         GLint infoLen = 0;
         glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &infoLen);
 
@@ -415,7 +417,7 @@ GLuint LoadShader(GLenum type, const char *shaderSrc)
             char *infoLog = (char*)malloc(sizeof(char) * infoLen);
 
             glGetShaderInfoLog(shader, infoLen, NULL, infoLog);
-            printf("\n\nError Compiling Shader:\n\n%s\n", infoLog);
+            _debugPrintf("\n\nError Compiling Shader:\n\n%s\n", infoLog);
             free(infoLog);
         }
 
@@ -430,24 +432,24 @@ GLuint LoadShader(GLenum type, const char *shaderSrc)
 
 int initGLShading2(char* _vShaderString, char* _fShaderString)
 {
-    printf("(NOTE): Init GL Shading 2. Initializing GL Shading with shader strings passed to us externally (by the user).\n");
+    _debugPrintf("(NOTE): Init GL Shading 2. Initializing GL Shading with shader strings passed to us externally (by the user).\n");
     vertexShaderID = LoadShader(GL_VERTEX_SHADER, _vShaderString);
     if(vertexShaderID == 0)
     {
-        printf("ERROR: vertex shader ID: %d\n", vertexShaderID);
+        _debugPrintf("ERROR: vertex shader ID: %d\n", vertexShaderID);
         return -1;
     }
-    else printf("V Shader ID: %d\n", vertexShaderID);
+    else _debugPrintf("V Shader ID: %d\n", vertexShaderID);
 
     CHECK_GL_ERROR("Vertex Shader");
 
     fragmentShaderID = LoadShader(GL_FRAGMENT_SHADER, _fShaderString);
     if(fragmentShaderID == 0)
     {
-        printf("ERROR: frag shader ID: %d\n", fragmentShaderID);
+        _debugPrintf("ERROR: frag shader ID: %d\n", fragmentShaderID);
         return -1;
     }
-    else printf("F Shader ID: %d\n", fragmentShaderID);
+    else _debugPrintf("F Shader ID: %d\n", fragmentShaderID);
 
     CHECK_GL_ERROR("Frag Shader");
 
@@ -456,7 +458,7 @@ int initGLShading2(char* _vShaderString, char* _fShaderString)
 
     if(programObjectID == 0)
     {
-        printf("ERROR: Program object is 0.\n");
+        _debugPrintf("ERROR: Program object is 0.\n");
         return -1;
     }
 
@@ -477,7 +479,7 @@ int initGLShading2(char* _vShaderString, char* _fShaderString)
     if(!linked)
     {
         // TODO: proper error.
-        printf("!!!!!! FAILED TO LINK SHADER!\n");
+        _debugPrintf("!!!!!! FAILED TO LINK SHADER!\n");
         return -1;
     }
     
@@ -521,33 +523,33 @@ int initGLShading2(char* _vShaderString, char* _fShaderString)
 #ifndef VITA
     if(VERTEX_POS_INDEX <= -1)
     {
-        printf("VERTEX_POS_INDEX returned invalid value: %d\n", VERTEX_POS_INDEX);
+        _debugPrintf("VERTEX_POS_INDEX returned invalid value: %d\n", VERTEX_POS_INDEX);
         return -1;
     }
     CHECK_GL_ERROR("VERTEX_POS_INDEX");
 
     if(VERTEX_TEXCOORD_INDEX <= -1)
     {
-        printf("VERTEX_TEXCOORD_INDEX returned invalid value: %d\n", VERTEX_TEXCOORD_INDEX);
+        _debugPrintf("VERTEX_TEXCOORD_INDEX returned invalid value: %d\n", VERTEX_TEXCOORD_INDEX);
         return -1;
     }
     CHECK_GL_ERROR("VERTEX_TEXCOORD_INDEX");
 
     if(VERTEX_MVP_INDEX <= -1)
     {
-        printf("VERTEX_MVP_INDEX returned invalid value: %d\n", VERTEX_MVP_INDEX);
+        _debugPrintf("VERTEX_MVP_INDEX returned invalid value: %d\n", VERTEX_MVP_INDEX);
         return -1;
     }
     CHECK_GL_ERROR("VERTEX_MVP_INDEX");
 
     if(VERTEX_COLOR_INDEX <= -1)
     {
-        printf("VERTEX_COLOR_INDEX returned invalid value: %d\n", VERTEX_COLOR_INDEX);
+        _debugPrintf("VERTEX_COLOR_INDEX returned invalid value: %d\n", VERTEX_COLOR_INDEX);
         return -1;
     }
     CHECK_GL_ERROR("VERTEX_COLOR_INDEX");
 #endif
-    printf(
+    _debugPrintf(
         "[Attrib Location Report]\n\nVERTEX_POS_INDEX: %d\nVERTEX_TEXCOORD_INDEX: %d\nVERTEX_MVP_INDEX: %d\nVERTEX_COLOR_INDEX: %d\n",
         VERTEX_POS_INDEX, VERTEX_TEXCOORD_INDEX, VERTEX_MVP_INDEX, VERTEX_COLOR_INDEX
     );
@@ -569,17 +571,17 @@ int initGLAdv()
 
     // Generate vbo
     glGenBuffers(1, &_vertexBufferID);
-    printf("Gen Buffers with ID %d\n", _vertexBufferID);
+    _debugPrintf("Gen Buffers with ID %d\n", _vertexBufferID);
     CHECK_GL_ERROR("GEN BUFFERS");
 
     // Bind VBO
     glBindBuffer(GL_ARRAY_BUFFER, _vertexBufferID);
-    printf("bind buffers\n");
+    _debugPrintf("bind buffers\n");
     CHECK_GL_ERROR("BIND BUFFERS");
 
     // Initial data buffer
     glBufferData(GL_ARRAY_BUFFER, _vgl_pending_total_size, 0, GL_DYNAMIC_DRAW);
-    printf("Initial Buffer Data with %ld bytes (%.2f MB)\n", _vgl_pending_total_size, (_vgl_pending_total_size / 1024.f) / 1024.f);
+    _debugPrintf("Initial Buffer Data with %ld bytes (%.2f MB)\n", _vgl_pending_total_size, (_vgl_pending_total_size / 1024.f) / 1024.f);
     CHECK_GL_ERROR("INITIAL BUFFER DATA");
 
     return 0;
@@ -600,11 +602,17 @@ int deInitGL()
 
 static void glfwError(int id, const char* description)
 {
-    printf("[GLFW] ERROR ID %d: %s\n", id, description);
+    _debugPrintf("[GLFW] ERROR ID %d: %s\n", id, description);
 }
 
-int initGL()
+int initGL(void (*dbgPrintFn)(const char*, ...))
 {
+    if(dbgPrintFn == NULL)
+    {
+        return -1;
+    }
+    
+    _debugPrintf = dbgPrintFn;
 #ifdef VITA
     vglInit(0x100000);
 #endif
@@ -614,13 +622,13 @@ int initGL()
     int glfwReturnVal = glfwInit();
     if(glfwReturnVal == GLFW_FALSE)
     {
-        printf("[main] glfwReturnVal is == GLFW_FALSE. glfw init failed.");
+        _debugPrintf("[main] glfwReturnVal is == GLFW_FALSE. glfw init failed.");
         return -1;
     }
-    printf("[main] GLFWInit: %d\n", glfwReturnVal);
+    _debugPrintf("[main] GLFWInit: %d\n", glfwReturnVal);
 
     _game_window = glfwCreateWindow(960,544,"Test", 0, 0);
-    printf("Window Pointer: %p\n", _game_window);
+    _debugPrintf("Window Pointer: %p\n", _game_window);
     glfwMakeContextCurrent(_game_window);
 
     
@@ -628,10 +636,10 @@ int initGL()
     int glewReturnVal = glewInit();
     if(glewReturnVal != GLEW_OK)
     {
-        printf("[main] GLEWINIT FAILED!\n");
+        _debugPrintf("[main] GLEWINIT FAILED!\n");
         return -1;
     }
-    printf("[main] GLEWInit: %d\n", glewReturnVal);
+    _debugPrintf("[main] GLEWInit: %d\n", glewReturnVal);
 #endif
 
     glClearColor(.1f, .5f, .1f, 1.0f);
@@ -698,7 +706,7 @@ void repaint()
     if(draw_calls == 0) goto FINISH_DRAWING;
     if(draw_calls > GL_MAX_VERTEX_ATTRIBS)
     {
-        printf("Too many calls (%d / %d).\n", draw_calls, GL_MAX_VERTEX_ATTRIBS);
+        _debugPrintf("Too many calls (%d / %d).\n", draw_calls, GL_MAX_VERTEX_ATTRIBS);
     }
 
     GLuint _vbo = Vita_GetVertexBufferID(); // Get OpenGL handle to our vbo. (On the GPU)
@@ -716,59 +724,18 @@ void repaint()
         glBindBuffer(GL_ARRAY_BUFFER, _vbo); // Bind our vbo through OpenGL.
         CHECK_GL_ERROR("bind");
 
-                                        // TODO: Texture binding & drawing w texcoords.
-                                        // TODO: Could this be done better? 
-        for(i = 0; i < draw_calls; i++) // 1 draw call is 4 vertices, we buffer 4 vertices at a time to OGL.
-        {
-
-            offset = i * sizeof(calls[i].verts);
-            sizeCopy = sizeof(calls[i].verts);
-            
-            glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE, &gpuBufferSize);
-            if(offset < 0 || sizeCopy < 0)
-            {
-                printf("Error: %s%s\n", offset < 0 ? "Offset < 0" : "", sizeCopy < 0 ? ", sizeCopy < 0" : "");
-                continue;
-            }
-            
-            if(offset + sizeCopy > gpuBufferSize)
-            {
-                printf("offset + sizeCopy > GL_BUFFERSIZE: %d > %d\n", (offset + sizeCopy), gpuBufferSize);
-                continue;
-            }
-
-
-            // memory address of our current draw call's vertices. we upload them as is thanks to C-structs!
-            void *vertexPtr = &(calls[i].verts); 
-/*
-            printf("writing (size of calls[i].verts: %d) (size: %d; offset: %d) vertexPtr: %p\n", sizeof(calls[i].verts), sizeCopy, offset, vertexPtr);
-            printf("\t%.2f, %.2f\n\t%.2f, %.2f\n\t%.2f, %.2f\n\t%.2f, %.2f\n", 
-                ((struct _vert*)vertexPtr)->x, ((struct _vert*)vertexPtr)->y,
-                ((struct _vert*)vertexPtr + 1)->x, ((struct _vert*)vertexPtr + 1)->y,
-                ((struct _vert*)vertexPtr + 2)->x, ((struct _vert*)vertexPtr + 2)->y,
-                ((struct _vert*)vertexPtr + 3)->x, ((struct _vert*)vertexPtr + 3)->y
-            );
-*/
-
-            // The magic.
-            // We buffer in `sizeCopy` bytes at `offset` from our `vertexPtr`
-            glBufferSubData(GL_ARRAY_BUFFER, 
-                            offset, // offset
-                            sizeCopy, // size
-                            vertexPtr);
-            CHECK_GL_ERROR("buffersub");
-        }
-
-        // printf("Handled %d drawcalls. (%d vertice count)\n", draw_calls, draw_calls * VERTICES_PER_QUAD);
+        glBufferData(GL_ARRAY_BUFFER, draw_calls * sizeof(DrawCall), calls, GL_DYNAMIC_DRAW);
+        // _debugPrintf("Handled %d drawcalls. (%d vertice count)\n", draw_calls, draw_calls * VERTICES_PER_QUAD);
     }
+    else return;
 
-// TODO: Is this necessary? Our _vbo should still be bound.
+    // TODO: Is this necessary? Our _vbo should still be bound.
     glBindBuffer(GL_ARRAY_BUFFER, _vbo); // Bind the vbo we've written to.
     glUseProgram(programObjectID); // Begin using our vert/frag shader combo (program)
 
 
-// ONLY enable these for data that you want to be
-// defined/ passed through the vertex attribute array.
+    // ONLY enable these for data that you want to be
+    // defined/ passed through the vertex attribute array.
     glEnableVertexAttribArray(VERTEX_POS_INDEX); // Enabling the property on the shader side.
     glEnableVertexAttribArray(VERTEX_TEXCOORD_INDEX); // Enabling TEX_COORD_INDEX
     glEnableVertexAttribArray(VERTEX_COLOR_INDEX); // Enabling color index
@@ -801,7 +768,7 @@ void repaint()
         if(_curDrawCall.verts != NULL
             && _curDrawCall.verts[0].obj_ptr != NULL)
         {
-            // printf("!!!!!\t!!!!! HAS extra data ptr!\n");
+            // _debugPrintf("!!!!!\t!!!!! HAS extra data ptr!\n");
             DEBUG_PRINT_OBJ_EX_DATA(((obj_extra_data *)_curDrawCall.verts[0].obj_ptr));
             obj_extra_data ex_data = *((obj_extra_data *)_curDrawCall.verts[0].obj_ptr); 
     
@@ -816,7 +783,7 @@ void repaint()
                     glUniform1i(_locUseTexture, 1);
                 
 
-                printf("[vgl_renderer] repaint(): TODO change bind texture from id %u to id %u\n", _curBoundTex, ex_data.textureID);
+                // _debugPrintf("[vgl_renderer] repaint(): TODO change bind texture from id %u to id %u\n", _curBoundTex, ex_data.textureID);
                 glBindTexture(GL_TEXTURE_2D, ex_data.textureID);
                 _curBoundTex = ex_data.textureID;
                 

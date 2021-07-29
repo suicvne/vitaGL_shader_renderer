@@ -15,7 +15,11 @@ typedef unsigned int uint32_t;
 #endif
 
 #ifndef size_t
+#ifdef VITA
+typedef unsigned int size_t;
+#else
 typedef unsigned long size_t;
+#endif
 #endif
 
 typedef struct _bm_key 

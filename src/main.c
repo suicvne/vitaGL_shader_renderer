@@ -14,6 +14,35 @@
 #define DISPLAY_WIDTH_DEF 960.f
 #define DISPLAY_HEIGHT_DEF 544.f
 
+#ifdef VITA
+#include <debugnet.h>
+#ifndef NETDBG_IP_SERVER
+#define NETDBG_IP_SERVER "192.168.0.45"
+#endif
+#ifndef NETDBG_PORT_SERVER
+#define NETDBG_PORT_SERVER 18194
+#endif
+
+static char __string_buffer[512] = {0};
+#endif
+
+void debugPrintf(const char* path, ...)
+{
+#if VITA
+    va_list argptr;
+    va_start(argptr, path);
+    vsprintf(__string_buffer, path, argptr);
+    va_end(argptr);
+
+    debugNetPrintf(DEBUG, __string_buffer);
+#else
+    va_list argptr;
+    va_start(argptr, path);
+    vfprintf(stdout, path, argptr);
+    va_end(argptr);
+#endif
+}
+
 
 const GLint _scr_offset_x = (DISPLAY_WIDTH_DEF);
 const GLint _scr_offset_y = (DISPLAY_HEIGHT_DEF);
@@ -42,6 +71,16 @@ _entity _test_entities[32];
 int min(int a, int b)
 {
     return (a < b) ? a : b;
+}
+
+int init_debug()
+{
+#ifdef VITA
+    return debugNetInit(NETDBG_IP_SERVER, NETDBG_PORT_SERVER, DEBUG);
+    
+#else
+    return 0;
+#endif
 }
 
 void init_entities()
@@ -139,11 +178,11 @@ int bm_test()
     
     bm_key_t *test_key = put_basic_map(new_map, (void *)_frag_shader);
     assert(test_key != NULL);
-    printf("[bm_test] test_key->id is %u\n", test_key->id);
+    debugPrintf("[bm_test] test_key->id is %u\n", test_key->id);
     // assert(test_key->id > -1);
     assert(test_key->obj_ptr != NULL);
     assert(((const char*)test_key->obj_ptr) == _frag_shader);
-    printf("[bm_test] String value of test_key ptr: `%s`\n", (const char*)(test_key->obj_ptr));
+    debugPrintf("[bm_test] String value of test_key ptr: `%s`\n", (const char*)(test_key->obj_ptr));
     assert(new_map->tracked_elements > 0);
     assert(new_map->tracked_elements != new_map->max_elements);
 
@@ -191,11 +230,12 @@ static obj_extra_data test_sprite_2 =
 
 int main()
 {
-    bm_test();
-    assert(sizeof(uint32_t) == sizeof(float));
-    printf("sizeof(void*) = %lu\n\tsizeof(float) = %lu\n", sizeof(void*), sizeof(float));
+    init_debug();
+    // bm_test();
+    //assert(sizeof(uint32_t) == sizeof(float));
+    //printf("sizeof(void*) = %lu\n\tsizeof(float) = %lu\n", sizeof(void*), sizeof(float));
 
-    initGL();
+    initGL(debugPrintf);
 
     int retVal = 0;
     char *vert_shader = malloc(2), *frag_shader = malloc(2);
@@ -204,14 +244,14 @@ int main()
     retVal = _Vita_ReadShaderFromFile(_vertex_shader, &vert_shader_size, &vert_shader);
     if(retVal != 0)
     {
-        printf("ERROR: Could not load shader from %s\n", _vertex_shader);
+        debugPrintf("ERROR: Could not load shader from %s\n", _vertex_shader);
         return -1;
     }
 
     retVal = _Vita_ReadShaderFromFile(_frag_shader, &frag_shader_size, &frag_shader);
     if(retVal != 0)
     {
-        printf("ERROR: Could not load frag shader from %s\n", _frag_shader);
+        debugPrintf("ERROR: Could not load frag shader from %s\n", _frag_shader);
         return -1;
     }
 
@@ -219,7 +259,7 @@ int main()
 
     if((shadingErrorCode = initGLShading2(vert_shader, frag_shader)) != 0)
     {
-        printf("ERROR INIT GL SHADING! %d\n", shadingErrorCode);
+        debugPrintf("ERROR INIT GL SHADING! %d\n", shadingErrorCode);
         return -1;
     }
 
@@ -231,13 +271,13 @@ int main()
     void* tex_buffer = malloc(8);
     int channels = 0;
 
-    Vita_LoadTextureBuffer(_texture_1_path, &tex_buffer, &_tex_1_w, &_tex_1_h, &channels, (void*)printf);
-    printf("[main] tex_buffer: %p\n", tex_buffer);
+    Vita_LoadTextureBuffer(_texture_1_path, &tex_buffer, &_tex_1_w, &_tex_1_h, &channels, (void*)debugPrintf);
+    debugPrintf("[main] tex_buffer: %p\n", tex_buffer);
 
-    Texture_1 = Vita_LoadTextureGL(tex_buffer, _tex_1_w, _tex_1_h, (void*)printf);
+    Texture_1 = Vita_LoadTextureGL(tex_buffer, _tex_1_w, _tex_1_h, (void*)debugPrintf);
     if(Texture_1 == 0)
     {
-        printf("Texture_1 failed to load: Returned %d for ID.\n", Texture_1);
+        debugPrintf("Texture_1 failed to load: Returned %d for ID.\n", Texture_1);
         deInitGL();
         return -1;
     }
