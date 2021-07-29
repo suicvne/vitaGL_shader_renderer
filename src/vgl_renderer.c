@@ -643,7 +643,7 @@ void clear()
  */
 void repaint()
 {
-    const GLsizei stride = VERTEX_ATTR_ELEM_COUNT * sizeof(GLfloat); // NOT Tightly packed. 4 verts per GL_TRIANGLE_STRIP
+    const GLsizei stride = VERTEX_ATTRIB_TOTAL_SIZE_1; // NOT Tightly packed. 4 verts per GL_TRIANGLE_STRIP
     uint32_t draw_calls = Vita_GetTotalCalls();
     if(draw_calls == 0) goto FINISH_DRAWING;
     if(draw_calls > GL_MAX_VERTEX_ATTRIBS)
@@ -748,53 +748,58 @@ void repaint()
     {
         _curDrawCall = _vgl_pending_calls[i];
 
-        // Only re-bind texture when it's different
-        // from what's currently bound.
-        if(_curBoundTex != _curDrawCall.textureID)
+        if(_curDrawCall.verts != NULL
+            && _curDrawCall.verts[0].obj_ptr != NULL)
         {
-        
-            if(_curDrawCall.textureID == 0)
-                glUniform1i(_locUseTexture, 0);
-            else
-                glUniform1i(_locUseTexture, 1);
+            printf("!!!!!\t!!!!! HAS extra data ptr!\n");
+    
+            // Only re-bind texture when it's different
+            // from what's currently bound.
+            if(_curBoundTex != _curDrawCall.textureID)
+            {
             
+                if(_curDrawCall.textureID == 0)
+                    glUniform1i(_locUseTexture, 0);
+                else
+                    glUniform1i(_locUseTexture, 1);
+                
 
-            // printf("[vgl_renderer] repaint(): TODO change bind texture from id %u to id %u\n", _curBoundTex, _curDrawCall.textureID);
-            glBindTexture(GL_TEXTURE_2D, _curDrawCall.textureID);
-            _curBoundTex = _curDrawCall.textureID;
-            
+                // printf("[vgl_renderer] repaint(): TODO change bind texture from id %u to id %u\n", _curBoundTex, _curDrawCall.textureID);
+                glBindTexture(GL_TEXTURE_2D, _curDrawCall.textureID);
+                _curBoundTex = _curDrawCall.textureID;
+                
+            }
+
+
+            glm_mat4_identity(_rot_arb);
+            glm_rotate_atm(
+                _rot_arb, 
+                (vec3){_curDrawCall.piv_x, _curDrawCall.piv_y, 0.f}, 
+                glm_rad(_curDrawCall.rot_z), 
+                (vec3){0.f, 0.f, 1.f}
+            );
+
+            vec3 refVector = {_curDrawCall.piv_x, _curDrawCall.piv_y, 0.f};
+            vec3 nRefVector = {-_curDrawCall.piv_x, -_curDrawCall.piv_y, 0.f};
+
+            mat4 transRefTo;
+            mat4 transRefFrom;
+            mat4 transfScale;
+            mat4 _temp1;
+            glm_mat4_identity(transRefTo);
+            glm_mat4_identity(transRefFrom);
+            glm_mat4_identity(transfScale);
+            glm_mat4_identity(_temp1);
+            glm_translate(transRefTo, nRefVector);
+            glm_translate(transRefFrom, refVector);
+
+            glm_scale(transfScale, (vec3){_curDrawCall.scale, _curDrawCall.scale, _curDrawCall.scale});
+            glm_mat4_mul(transRefFrom, transfScale, _temp1);
+            glm_mat4_mul(_temp1, transRefTo, _scale_arb);    
         }
-
-
-        glm_mat4_identity(_rot_arb);
-        glm_rotate_atm(
-            _rot_arb, 
-            (vec3){_curDrawCall.piv_x, _curDrawCall.piv_y, 0.f}, 
-            glm_rad(_curDrawCall.rot_z), 
-            (vec3){0.f, 0.f, 1.f}
-        );
-
-        vec3 refVector = {_curDrawCall.piv_x, _curDrawCall.piv_y, 0.f};
-        vec3 nRefVector = {-_curDrawCall.piv_x, -_curDrawCall.piv_y, 0.f};
-
-        mat4 transRefTo;
-        mat4 transRefFrom;
-        mat4 transfScale;
-        mat4 _temp1;
-        glm_mat4_identity(transRefTo);
-        glm_mat4_identity(transRefFrom);
-        glm_mat4_identity(transfScale);
-        glm_mat4_identity(_temp1);
-        glm_translate(transRefTo, nRefVector);
-        glm_translate(transRefFrom, refVector);
-
-        glm_scale(transfScale, (vec3){_curDrawCall.scale, _curDrawCall.scale, _curDrawCall.scale});
-        glm_mat4_mul(transRefFrom, transfScale, _temp1);
-        glm_mat4_mul(_temp1, transRefTo, _scale_arb);
 
         glUniformMatrix4fv(UNIFORM_SCALE_INDEX, 1, GL_FALSE, (const GLfloat *)_scale_arb);
         glUniformMatrix4fv(UNIFORM_ROTMAT_INDEX, 1, GL_FALSE, (const GLfloat*)_rot_arb);
-        // CHECK_GL_ERROR("glUniformMatrix _rot");        
 
         glDrawArrays(GL_TRIANGLE_STRIP, i * VERTICES_PER_PRIM, VERTICES_PER_PRIM);
 

@@ -40,6 +40,8 @@
 #define VERTEX_ATTR_ELEM_COUNT 8
 #define MAX_VERTICES 1024 // TODO: This should be renamed to MAX_DRAWCALLS. We allocate our VBO with memory to fill MAX_VERTICES * sizeof(DrawCall)
 
+#define VERTEX_ATTRIB_TOTAL_SIZE_1 (VERTEX_ATTR_ELEM_COUNT * sizeof(float)) + (sizeof(void *))
+
 typedef unsigned int GLuint;
 
 typedef struct _vert 
@@ -47,7 +49,20 @@ typedef struct _vert
     float x, y;
     float s, v; // Tex Coord X, Tex Coord Y
     float _r, _g, _b, _a;
+
+    void *obj_ptr;
 } __attribute__ ((packed)) vert;
+
+typedef struct _obj_extra_data 
+{
+    GLuint textureID;
+    float piv_x;
+    float piv_y;
+    float rot_x;
+    float rot_y;
+    float rot_z;
+    float scale;
+} __attribute__ ((packed)) obj_extra_data;
 
 typedef struct _DrawCall
 {
