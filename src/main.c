@@ -208,7 +208,7 @@ int main()
             sin((_ticks * .2f)) * 360.f // Rot.
         ); 
 
-        // render_entities();
+        render_entities();
 
         Vita_DrawRectColorRot(0, 0, 9.5f, 9.5f, 0.f, 1.f, 0.f, 0.2f, 1.0f);
 
@@ -217,7 +217,7 @@ int main()
         repaint();
         _ticks += .077f;
 
-        // update_entities(_ticks);
+        update_entities(_ticks);
     }
 
 

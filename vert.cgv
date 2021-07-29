@@ -1,10 +1,10 @@
 void main(
-    float2 aPosition : ATTR0,
-    float2 vTexCoord : ATTR1,
-    float4 vColor : ATTR2,
-    uniform float4x4 mvp : BUFFER1,
-    uniform float4x4 _rot : BUFFER2,
-    uniform float4x4 _scale : BUFFER3,
+    float2 aPosition,
+    float2 vTexCoord,
+    float4 vColor,
+    uniform float4x4 mvp,
+    uniform float4x4 _rot,
+    uniform float4x4 _scale,
     float4 out vertPos : POSITION,
     float4 out fragColor : COLOR,
     float2 out texCoord : TEXCOORD0

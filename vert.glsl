@@ -10,7 +10,7 @@ uniform mat4 _scale;
 
 void main()
 {
-    gl_Position = mvp * _rot * _scale * vec4(vPosition.xy, 0, 1.f);
+    gl_Position = mvp * _rot * _scale * vec4(vPosition.xy, 0, 1);
     fragColor = vColor;
     texCoord = vTexCoord;
 }

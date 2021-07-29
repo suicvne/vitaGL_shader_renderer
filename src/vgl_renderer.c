@@ -596,7 +596,12 @@ int initGL()
     // glLoadIdentity();
     // glOrtho(0, DISPLAY_WIDTH, DISPLAY_HEIGHT, 0, -1, 1);
 
+#ifdef __APPLE__
+    // TODO: Check for retina on Apple machines.
     glm_ortho_lh_zo(0, DISPLAY_WIDTH, DISPLAY_HEIGHT, 0, -1, 1, cpu_mvp);
+#else
+    glm_ortho_lh_zo(0, DISPLAY_WIDTH * 2, DISPLAY_HEIGHT * 2, 0, -1, 1, cpu_mvp);
+#endif
 
     // glMatrixMode(GL_MODELVIEW);
     // glLoadIdentity();
