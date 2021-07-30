@@ -293,9 +293,14 @@ int main()
         // clear current vbo
         clear();
 
+        Vita_DrawRectColor(fabs(cos(_ticks * .5f) * (300)) + 4, 4, 32, 32, .2f, .2f, .2f, .58f);
         Vita_Draw(fabs(cos(_ticks * .5f) * (300 + 0)), 0, 32, 32);
+
+        Vita_DrawRectColor(fabs(cos(_ticks * .5f) * (300 + 20)) + 4, 36, 64, 64, .2f, .2f, .2f, .58f);
         Vita_Draw(fabs(cos(_ticks * .5f) * (300 + 20)), 32, 64, 64);
-        Vita_Draw(fabs(cos(_ticks * .5f) * (300 + 40)), sin(_ticks) * (32 + 64) , 128, 128);
+
+        Vita_DrawRectColor(fabs(cos(_ticks * .5f) * (300 + 40)) + 4, (sin(_ticks) * (32 + 64)) + 4, 128, 128, .2f, .2f, .2f, .58f);
+        Vita_Draw(fabs(cos(_ticks * .5f) * (300 + 40)), (sin(_ticks) * (32 + 64)) , 128, 128);
 
         test_data_1.rot_z = sin((_ticks * .2f)) * 360.f;
 
@@ -344,7 +349,11 @@ int main()
 
         // Draw from vbo, swap to next vbo
         repaint();
+#ifdef VITA
         _ticks += .077f;
+#else
+        _ticks += 0.0077f;
+#endif
 
         update_entities(_ticks);
     }

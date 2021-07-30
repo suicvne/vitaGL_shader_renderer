@@ -15,6 +15,7 @@
 #else
 #include <vitasdk.h>
 #include <vitaGL.h>
+#include <psp2/gxm.h>
 #endif
 
 #include <stdio.h>
@@ -64,16 +65,16 @@ typedef struct _obj_extra_data
     float scale;
 } __attribute__ ((packed)) obj_extra_data;
 
+typedef struct _shading_pass
+{
+    int ProgramObjectID;
+    float offset_x;
+    float offset_y;
+} __attribute__ ((packed)) ShadingPass;
+
 typedef struct _DrawCall
 {
     struct _vert verts[VERTICES_PER_PRIM];
-    // GLuint textureID;
-    // float piv_x;
-    // float piv_y;
-    // float rot_x; 
-    // float rot_y; 
-    // float rot_z;
-    // float scale;
 } __attribute__ ((packed)) DrawCall;
 
 static const char* GLINVALIDENUM = "GL_INVALID_ENUM";

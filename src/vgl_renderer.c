@@ -40,6 +40,11 @@ static size_t _vgl_pending_total_size; // SIZE IN BYTES
 static unsigned int _DrawCalls = 0; // DRAW CALL COUNT
 // ------------------------------------------ END SHADERS 
 
+// ------------------------------------------ PASSES
+static ShadingPass _shading_passes[6];
+static unsigned int _ShadingPasses = 1;
+// ------------------------------------------
+
 // ------------------------------------------   BUFFERS
 static GLuint _vertexBufferID;
 // ------------------------------------------ END BUFFERS
@@ -49,6 +54,19 @@ static GLint vertexShaderID;
 static GLint fragmentShaderID;
 static GLint programObjectID;
 // ------------------------------------------ END SHADERS
+
+static inline void Vita_AddPass(ShadingPass passInfo, int order)
+{
+    if(passInfo.ProgramObjectID <= 0) return;
+
+    // (count - 1) - order
+    if(3 + order < 0 || 3 + order > 5)
+    {
+        return;
+    }
+
+    _shading_passes[3 + order];
+}
 
 /**
  * _Vita_GetAvailableDrawCall():
@@ -517,6 +535,10 @@ int initGLShading2(char* _vShaderString, char* _fShaderString)
 
     glm_mat4_identity(_scale);
     glm_mat4_identity(_scale_arb);
+
+    _shading_passes[2].ProgramObjectID = programObjectID;
+    _shading_passes[2].offset_x = 0;
+    _shading_passes[2].offset_y = 0;
     
     // TODO: vec2 for texcoords.
 #endif
@@ -611,10 +633,29 @@ int initGL(void (*dbgPrintFn)(const char*, ...))
     {
         return -1;
     }
-    
+
     _debugPrintf = dbgPrintFn;
+
+    for(int i = 0; i < 6; i++)
+    {
+        _shading_passes[i].ProgramObjectID = 0;
+        _shading_passes[i].offset_x = 0;
+        _shading_passes[i].offset_y = 0;
+    }
+
 #ifdef VITA
-    vglInit(0x100000);
+    // vglInit(0);
+    //0x100000
+    int x = 0x4000000;
+    _debugPrintf("Initializing with threshold of %d\n", x);
+    // vglInitExtended(0, DISPLAY_WIDTH, DISPLAY_HEIGHT, x, SCE_GXM_MULTISAMPLE_NONE);
+    vglInitWithCustomSizes(0, 
+                           DISPLAY_WIDTH, 
+                           DISPLAY_HEIGHT, 
+                           8 * 1024 * 1024, 
+                           8 * 1024 * 1024, 
+                           4 * 1024 * 1024, 
+                           SCE_GXM_MULTISAMPLE_NONE);
 #endif
 #ifndef VITA
     glewExperimental = 1;
@@ -760,6 +801,22 @@ void repaint()
     GLint _locUseTexture = glGetUniformLocation(programObjectID, "useTexture");
     GLuint _curBoundTex = 0;
     DrawCall _curDrawCall;
+
+    for(int p = 0; p < 6; p++)
+    {
+        _debugPrintf("Pass [%d]: ProgramID: %d, offset: (%.2f, %.2f)\n", 
+            p, 
+            _shading_passes[p].ProgramObjectID, _shading_passes[p].offset_x, _shading_passes[p].offset_y);
+
+        if(p == 5) _debugPrintf("\n");
+        /*
+        if(_shading_passes[p].ProgramObjectID != 0)
+        {
+            _debugPrintf("!! New pass with program ID: %d\n", _shading_passes[p].ProgramObjectID);
+        }
+        */
+        
+    }
 
     for(i = 0; i < draw_calls; i++)
     {
