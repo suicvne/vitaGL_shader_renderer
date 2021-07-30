@@ -158,6 +158,8 @@ static const char *_frag_shader = "app0:frag.cgf";
 static const char *_texture_1_path = "../bobomb_red.png";
 static const char *_vertex_shader = "../vert.glsl";
 static const char *_frag_shader = "../frag.glsl";
+
+static const char *_frag2_shader = "../frag_mm_shadow.glsl";
 #endif
 
 
@@ -247,6 +249,7 @@ int main()
         debugPrintf("ERROR: Could not load shader from %s\n", _vertex_shader);
         return -1;
     }
+    debugPrintf("-----------------\n%s\n----------------\n", vert_shader);
 
     retVal = _Vita_ReadShaderFromFile(_frag_shader, &frag_shader_size, &frag_shader);
     if(retVal != 0)
@@ -254,6 +257,7 @@ int main()
         debugPrintf("ERROR: Could not load frag shader from %s\n", _frag_shader);
         return -1;
     }
+    debugPrintf("-----------------\n%s\n----------------\n", frag_shader);
 
     int shadingErrorCode = 0;
 
@@ -267,6 +271,34 @@ int main()
     free(frag_shader);
     
     initGLAdv();
+
+
+#ifndef VITA
+
+    char *frag2 = malloc(2);
+    size_t frag2_size;
+    retVal = _Vita_ReadShaderFromFile(_frag2_shader, &frag2_size, &frag2);
+    if(retVal != 0)
+    {
+        debugPrintf("ERROR: Could not load frag shader 2.");
+    }
+    else
+    {
+        debugPrintf("-----------------\n%s\n----------------\n", frag2);
+        if(Vita_AddShaderPass(NULL, frag2, -1) != 0)
+        {
+            debugPrintf("No secondary shader.\n");
+            return -1;
+        }
+    }
+#endif
+
+
+
+
+
+
+
 
     void* tex_buffer = malloc(8);
     int channels = 0;

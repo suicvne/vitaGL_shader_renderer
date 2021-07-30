@@ -59,13 +59,22 @@ static inline void Vita_AddPass(ShadingPass passInfo, int order)
 {
     if(passInfo.ProgramObjectID <= 0) return;
 
+    int idx = 2 + order;
+
+    _debugPrintf("VITA_ADDPASS PROGRAM: %d at index: %d (specified order: %d)\n", passInfo.ProgramObjectID, idx, order);
+
     // (count - 1) - order
-    if(3 + order < 0 || 3 + order > 5)
+    if(idx < 0 || idx > 5)
     {
         return;
     }
 
-    _shading_passes[3 + order];
+    _shading_passes[idx].FragmentShaderID = passInfo.FragmentShaderID;
+    _shading_passes[idx].ProgramObjectID = passInfo.ProgramObjectID;
+    _shading_passes[idx].VertexShaderID = passInfo.VertexShaderID;
+    _shading_passes[idx].offset_x = passInfo.offset_x;
+    _shading_passes[idx].offset_y = passInfo.offset_y;
+
 }
 
 /**
@@ -446,6 +455,93 @@ GLuint LoadShader(GLenum type, const char *shaderSrc)
     return shader;
 }
 
+// ------------------------------------------ PASSES
+int Vita_AddShaderPass(char* vert_shader, char* frag_shader, int order)
+{
+    int add_idx = 3 + order;
+    if(add_idx < 0 || add_idx > 5)
+        return -1;
+    
+    _debugPrintf
+        ("Adding new custom pass at %d (%d index). Vert Shader Custom: %s; Frag Shader Custom: %s\n", 
+        order, 
+        add_idx, 
+        (vert_shader == NULL ? "No" : "Yes!"),
+        (frag_shader == NULL ? "No" : "Yes!")
+    );
+
+    // New vert shader.
+    GLuint _newProgVertShader;
+    if(vert_shader == NULL)
+        _newProgVertShader = vertexShaderID;
+    else
+    {
+        _newProgVertShader = LoadShader(GL_VERTEX_SHADER, vert_shader);
+        if(_newProgVertShader == 0)
+            return -1;
+    }
+    CHECK_GL_ERROR("Vita_AddShaderPass newProgVertShader");
+    
+    // New frag shader.
+    GLuint _newProgFragShader;
+    if(frag_shader == NULL)
+        _newProgFragShader = fragmentShaderID;
+    else
+    {
+        _newProgFragShader = LoadShader(GL_FRAGMENT_SHADER, frag_shader);
+        if(_newProgFragShader == 0)
+            return -1;
+    }
+    CHECK_GL_ERROR("Vita_AddShaderPass newProgFragShader");
+    
+    // Linking
+    GLuint _newProgProgram = glCreateProgram();
+    glAttachShader(_newProgProgram, _newProgVertShader);
+    glAttachShader(_newProgProgram, _newProgFragShader);
+
+    glLinkProgram(_newProgProgram);
+    CHECK_GL_ERROR("Vita_AddShaderPass link newProgProgram");
+
+    GLint linked;
+    glGetProgramiv(_newProgProgram, GL_LINK_STATUS, &linked);
+    CHECK_GL_ERROR("Vita_AddShaderPass glGetProgramiv");
+
+    if(!linked)
+    {
+        _debugPrintf("!!!!! ERROR: Could not link shader.\n");
+        GLint length;
+	    glGetProgramiv(_newProgProgram,GL_INFO_LOG_LENGTH,&length);
+	    unsigned char* log = (unsigned char*)malloc(length);
+		
+	    glGetProgramInfoLog(_newProgProgram,200,&length,log);
+
+        _debugPrintf("Error Message: %s\n", log);
+
+
+        if(vert_shader != NULL)
+            glDeleteShader(_newProgVertShader);
+        
+        if(frag_shader != NULL)
+            glDeleteShader(_newProgFragShader);
+        
+        glDeleteProgram(_newProgProgram);
+        
+        return -1;
+    }
+
+    // 
+    ShadingPass passInfo;
+    passInfo.offset_x = 4.f;
+    passInfo.offset_y = 4.f;
+    passInfo.ProgramObjectID = _newProgProgram;
+    passInfo.VertexShaderID = _newProgVertShader;
+    passInfo.FragmentShaderID = _newProgFragShader;
+
+    Vita_AddPass(passInfo, order);
+    return 0;
+}
+// ------------------------------------------ END PASSES
+
 // ------------------------------------------    INIT FUNCTIONS
 
 int initGLShading2(char* _vShaderString, char* _fShaderString)
@@ -802,92 +898,96 @@ void repaint()
     GLuint _curBoundTex = 0;
     DrawCall _curDrawCall;
 
-    for(int p = 0; p < 6; p++)
+    for (int p = 0; p < 6; p++)
     {
-        _debugPrintf("Pass [%d]: ProgramID: %d, offset: (%.2f, %.2f)\n", 
-            p, 
-            _shading_passes[p].ProgramObjectID, _shading_passes[p].offset_x, _shading_passes[p].offset_y);
+#if 0
+        _debugPrintf("Pass [%d]: ProgramID: %d, offset: (%.2f, %.2f)\n",
+                     p,
+                     _shading_passes[p].ProgramObjectID, _shading_passes[p].offset_x, _shading_passes[p].offset_y);
 
-        if(p == 5) _debugPrintf("\n");
-        /*
-        if(_shading_passes[p].ProgramObjectID != 0)
+
+        if (p == 5)
+            _debugPrintf("\n");
+#endif
+
+        if (_shading_passes[p].ProgramObjectID != 0)
         {
-            _debugPrintf("!! New pass with program ID: %d\n", _shading_passes[p].ProgramObjectID);
-        }
-        */
-        
-    }
+            ShadingPass curPass = _shading_passes[p];
+            // _debugPrintf("!! New pass with program ID: %d\n", _shading_passes[p].ProgramObjectID);
 
-    for(i = 0; i < draw_calls; i++)
-    {
-        _curDrawCall = _vgl_pending_calls[i];
-
-        if(_curDrawCall.verts != NULL
-            && _curDrawCall.verts[0].obj_ptr != NULL)
-        {
-            // _debugPrintf("!!!!!\t!!!!! HAS extra data ptr!\n");
-            DEBUG_PRINT_OBJ_EX_DATA(((obj_extra_data *)_curDrawCall.verts[0].obj_ptr));
-            obj_extra_data ex_data = *((obj_extra_data *)_curDrawCall.verts[0].obj_ptr); 
-    
-            // Only re-bind texture when it's different
-            // from what's currently bound.
-            if(_curBoundTex != ex_data.textureID)
+            for (i = 0; i < draw_calls; i++)
             {
-            
-                if(ex_data.textureID == 0)
-                    glUniform1i(_locUseTexture, 0);
-                else
-                    glUniform1i(_locUseTexture, 1);
-                
+                _curDrawCall = _vgl_pending_calls[i];
 
-                // _debugPrintf("[vgl_renderer] repaint(): TODO change bind texture from id %u to id %u\n", _curBoundTex, ex_data.textureID);
-                glBindTexture(GL_TEXTURE_2D, ex_data.textureID);
-                _curBoundTex = ex_data.textureID;
-                
+                if (_curDrawCall.verts != NULL && _curDrawCall.verts[0].obj_ptr != NULL)
+                {
+                    // _debugPrintf("!!!!!\t!!!!! HAS extra data ptr!\n");
+                    DEBUG_PRINT_OBJ_EX_DATA(((obj_extra_data *)_curDrawCall.verts[0].obj_ptr));
+                    obj_extra_data ex_data = *((obj_extra_data *)_curDrawCall.verts[0].obj_ptr);
+
+                    // Only re-bind texture when it's different
+                    // from what's currently bound.
+                    if (_curBoundTex != ex_data.textureID)
+                    {
+
+                        if (ex_data.textureID == 0)
+                            glUniform1i(_locUseTexture, 0);
+                        else
+                            glUniform1i(_locUseTexture, 1);
+
+                        // _debugPrintf("[vgl_renderer] repaint(): TODO change bind texture from id %u to id %u\n", _curBoundTex, ex_data.textureID);
+                        glBindTexture(GL_TEXTURE_2D, ex_data.textureID);
+                        _curBoundTex = ex_data.textureID;
+                    }
+
+                    // TODO: Add offset to the basic shader.
+                    // glm_translate(cpu_mvp, (vec3){curPass.offset_x, curPass.offset_y, 0.f});
+
+                    
+
+                    glm_mat4_identity(_rot_arb);
+                    glm_rotate_atm(
+                        _rot_arb,
+                        (vec3){ex_data.piv_x, ex_data.piv_y, 0.f},
+                        glm_rad(ex_data.rot_z),
+                        (vec3){0.f, 0.f, 1.f});
+
+                    vec3 refVector = {ex_data.piv_x, ex_data.piv_y, 0.f};
+                    vec3 nRefVector = {-ex_data.piv_x, -ex_data.piv_y, 0.f};
+
+                    mat4 transRefTo;
+                    mat4 transRefFrom;
+                    mat4 transfScale;
+                    mat4 _temp1;
+                    glm_mat4_identity(transRefTo);
+                    glm_mat4_identity(transRefFrom);
+                    glm_mat4_identity(transfScale);
+                    glm_mat4_identity(_temp1);
+                    glm_translate(transRefTo, nRefVector);
+                    glm_translate(transRefFrom, refVector);
+
+                    glm_scale(transfScale, (vec3){ex_data.scale, ex_data.scale, ex_data.scale});
+                    glm_mat4_mul(transRefFrom, transfScale, _temp1);
+                    glm_mat4_mul(_temp1, transRefTo, _scale_arb);
+                }
+
+                glUniformMatrix4fv(UNIFORM_SCALE_INDEX, 1, GL_FALSE, (const GLfloat *)_scale_arb);
+                glUniformMatrix4fv(UNIFORM_ROTMAT_INDEX, 1, GL_FALSE, (const GLfloat *)_rot_arb);
+
+                glDrawArrays(GL_TRIANGLE_STRIP, i * VERTICES_PER_PRIM, VERTICES_PER_PRIM);
+
+                glm_mat4_identity(_scale_arb);
+                glm_mat4_identity(_rot_arb);
             }
-
-
-            glm_mat4_identity(_rot_arb);
-            glm_rotate_atm(
-                _rot_arb, 
-                (vec3){ex_data.piv_x, ex_data.piv_y, 0.f}, 
-                glm_rad(ex_data.rot_z), 
-                (vec3){0.f, 0.f, 1.f}
-            );
-
-            vec3 refVector = {ex_data.piv_x, ex_data.piv_y, 0.f};
-            vec3 nRefVector = {-ex_data.piv_x, -ex_data.piv_y, 0.f};
-
-            mat4 transRefTo;
-            mat4 transRefFrom;
-            mat4 transfScale;
-            mat4 _temp1;
-            glm_mat4_identity(transRefTo);
-            glm_mat4_identity(transRefFrom);
-            glm_mat4_identity(transfScale);
-            glm_mat4_identity(_temp1);
-            glm_translate(transRefTo, nRefVector);
-            glm_translate(transRefFrom, refVector);
-            
-            glm_scale(transfScale, (vec3){ex_data.scale, ex_data.scale, ex_data.scale});
-            glm_mat4_mul(transRefFrom, transfScale, _temp1);
-            glm_mat4_mul(_temp1, transRefTo, _scale_arb);    
         }
-
-        glUniformMatrix4fv(UNIFORM_SCALE_INDEX, 1, GL_FALSE, (const GLfloat *)_scale_arb);
-        glUniformMatrix4fv(UNIFORM_ROTMAT_INDEX, 1, GL_FALSE, (const GLfloat*)_rot_arb);
-
-        glDrawArrays(GL_TRIANGLE_STRIP, i * VERTICES_PER_PRIM, VERTICES_PER_PRIM);
-
-        glm_mat4_identity(_scale_arb);
-        glm_mat4_identity(_rot_arb);
+        // Revert shader state. 
+        glUniform1i(_locUseTexture, 0);
+        glBindTexture(GL_TEXTURE_2D, 0);
     }
 
     glFlush();
     
-    // Revert shader state. 
-    glUniform1i(_locUseTexture, 0);
-    glBindTexture(GL_TEXTURE_2D, 0);
+    
 
     // Reverting state.
     glDisableVertexAttribArray(VERTEX_POS_INDEX);

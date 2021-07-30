@@ -16,8 +16,11 @@ static inline int _Vita_ReadShaderFromFile(const char* path, size_t* fsize, char
     *fsize = ftell(_file);
     fseek(_file, 0, SEEK_SET);
 
-    *buffer = realloc(*buffer, *fsize);
+    *buffer = realloc(*buffer, (*fsize) + 1);
     fread(*buffer, *fsize, 1, _file);
+
+    size_t offset = *fsize;
+    (*buffer)[offset] = '\0';
 
     fclose(_file);
     return 0;

@@ -67,7 +67,9 @@ typedef struct _obj_extra_data
 
 typedef struct _shading_pass
 {
-    int ProgramObjectID;
+    unsigned int ProgramObjectID;
+    unsigned int VertexShaderID;
+    unsigned int FragmentShaderID;
     float offset_x;
     float offset_y;
 } __attribute__ ((packed)) ShadingPass;
@@ -199,6 +201,8 @@ int deInitGL();
 // TODO: Function prefixes for these.
 void clear();
 void repaint();
+
+int Vita_AddShaderPass(char* vert_shader, char* frag_shader, int order);
 
 void Vita_Draw(float x, float y, float wDst, float hDst);
 
