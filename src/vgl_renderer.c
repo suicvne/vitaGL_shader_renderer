@@ -1,3 +1,7 @@
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "vgl_renderer.h"
 
 #include <cglm/cglm.h>
@@ -13,23 +17,41 @@
 static GLFWwindow* _game_window;
 #endif
 
+// A pointer to the debug printf function.
+// This must be set so as to avoid a crash.
 static void (*_debugPrintf)(const char*, ...);
 
+// The width of the display.
 static int DISPLAY_WIDTH = 960;
+
+// The height of the display.
 static int DISPLAY_HEIGHT = 544;
 
+// The attribute location index for the vertex position in the shader.
 static int VERTEX_POS_INDEX = 0;
+
+// Attribute location index for tex coordinates in the shader.
 static int VERTEX_TEXCOORD_INDEX = 0;
+
+// Attribute location index for color in the shader.
 static int VERTEX_COLOR_INDEX = 0;
+
+// UNIFFORM location index for the MVP in the shader.
 static int VERTEX_MVP_INDEX = 3;
+
+// Uniform location index for the rotation matrix in the shader.
 static int UNIFORM_ROTMAT_INDEX = 4;
+
+// Uniform location index for the scale matrix in the shader.
 static int UNIFORM_SCALE_INDEX = 5;
 
-mat4 cpu_mvp;
-mat4 _rot;
-mat4 _rot_arb;
-mat4 _scale;
-mat4 _scale_arb;
+// Uniform location index for the `useTexture` flag in the shader.
+static int UNIFORM_USE_TEXTURE_BOOL_INDEX = 0;
+
+// Uniform location index for the sampler2D that IS the texture in the shader.
+// More than likely, this is set automatically just by calling `glBindBuffer`. 
+// This will probably be removed.
+static int UNIFORM_SAMPLER_TEXTURE_INDEX = 0;
 
 static const GLuint VERTEX_SIZE = VERTEX_POS_SIZE + VERTEX_TEXCOORD_SIZE + VERTEX_COLOR_SIZE;
 
@@ -41,20 +63,99 @@ static unsigned int _DrawCalls = 0; // DRAW CALL COUNT
 // ------------------------------------------ END SHADERS 
 
 // ------------------------------------------ PASSES
+
+// An array of passes. If any passes have a program ID 
+// defined as 0, they will be skipped.
+//
+// There is always at least 1 shading pass, the default.
+// It is put directly in the middle of the buffer to allow other passes
+// to be drawn below & above it.
 static ShadingPass _shading_passes[6];
+
+// The total number of real passes in the buffer (real = program object ID != 0)
 static unsigned int _ShadingPasses = 1;
 // ------------------------------------------
 
 // ------------------------------------------   BUFFERS
+
+// The default ID of the VBO we'll be writing
+// draw calls to.
 static GLuint _vertexBufferID;
 // ------------------------------------------ END BUFFERS
 
 // ------------------------------------------   SHADERS
+
+// The ID of the default vertex shader.
+// This either the default embedded in SHADERS.h OR
+// the shader specified when calling initGLShading2
 static GLint vertexShaderID;
+
+// The ID of the default fragment shader.
+// This is either the default embedded in SHADERS.h OR
+// the shader specified when calling initGLShading2
 static GLint fragmentShaderID;
+
+// The ID of the default shading program.
+// This either the embedded default vert & frag shaders linked together
+// OR the shaders specified in initGLShading2 linked together.
 static GLint programObjectID;
 // ------------------------------------------ END SHADERS
 
+// ------------------------------------------   MAT BUFFERS
+
+// The model view projection mat4 that each draw call will use for projection.
+// By default, this is a glOrtho given the Vita's screen size.
+mat4 cpu_mvp;
+
+// The rotation identity matrix, for now, being stored.
+mat4 _rot;
+
+// An arbitrary rotation matrix buffer. This will be set and reset over and over again
+// in a frame for each object. For objects that don't specify extra rotation data,
+// this will mostly be the identity matrix.
+mat4 _rot_arb;
+
+// The scale identity matrix, for now, being stored.
+mat4 _scale;
+
+// An arbitrary scaling matrix buffer. This will be set and reset over and over again
+// in a frame for each object. For objects that don't specify extra scaling data,
+// this will mostly be the identity matrix.
+mat4 _scale_arb;
+// ------------------------------------------   END MAT BUFFERS
+
+
+// ------------------------------------------   INTERNAL FUNCTIONS
+
+static inline int _Vita_SortDrawCalls(const void *s1, const void *s2)
+{
+    DrawCall *dc1 = (DrawCall *)s1;
+    DrawCall *dc2 = (DrawCall *)s2;
+
+    if(dc1->verts[0].obj_ptr != NULL 
+        && dc2->verts[0].obj_ptr != NULL)
+    {
+        return (((obj_extra_data *)dc1->verts[0].obj_ptr)->textureID) - (((obj_extra_data *)dc2->verts[0].obj_ptr)->textureID);
+    }
+
+    return +1;
+}
+
+/**
+ * Vita_AddPass():
+ *  Sets the information from the `passInfo` variable
+ *  to the pass at the given order. 
+ * 
+ * Order is relative to the default pass which is CURRENTLY 
+ * at index 2. If you want to add pass before the default pass,
+ * (eg: hard drop shadows in 2D), you should set order to -1.
+ * 
+ * This will resolve as follows:
+ * 
+ * idx = (2 + order)
+ * idx = 2 + -1;
+ * idx = 1;
+ */
 static inline void Vita_AddPass(ShadingPass passInfo, int order)
 {
     if(passInfo.ProgramObjectID <= 0) return;
@@ -104,7 +205,20 @@ static inline void _Vita_DoneWithDrawCall()
     _DrawCalls++;
 }
 
-
+/**
+ * Writes the vertices into the given `drawCall`
+ * based on the input coordinates. 
+ * 
+ * By passing x, y, w, h, we can determine where
+ * all the vertices need to be for a given quad relatively easily.
+ * 
+ * n_src_x, n_src_x2
+ * n_src_y, n_src_y2 form the coordinates that define the 
+ * normalized texture coordinate rect for sampling textures.
+ * 
+ * In addition, each vertex can have its own color. However,
+ * most of the time the colors are set the same for all 4 vertices.
+ */
 static inline void
 _Vita_WriteVertices4xColor(DrawCall *drawCall,
                           float x,
@@ -163,6 +277,12 @@ _Vita_WriteVertices4xColor(DrawCall *drawCall,
     drawCall->verts[3]._a = rgba3[3];
 }
 
+/**
+ * _Vita_WriteVertices():
+ *  Calls @ _Vita_WriteVertices4xColor using
+ *  the given rgba values for all 4 vertices.
+ *  All other parameters are passed along.
+ */
 static inline void 
 _Vita_WriteVertices(DrawCall *drawCall, 
                    float x, 
@@ -183,217 +303,6 @@ _Vita_WriteVertices(DrawCall *drawCall,
                               x, y, wDst, hDst, 
                               n_src_x, n_src_x2, n_src_y, n_src_y2, 
                               rgba0, rgba0, rgba0, rgba0);
-}
-
-void Vita_DrawRect4xColor(float x, float y,
-                          float wDst, float hDst,
-                          float rgba0[4],
-                          float rgba1[4],
-                          float rgba2[4],
-                          float rgba3[4])
-{
-    DrawCall *_curDrawCall = _Vita_GetAvailableDrawCall();
-    if(_curDrawCall == 0) {return;}
-
-    _Vita_WriteVertices4xColor(_curDrawCall, x, y, wDst, hDst, 0.f, 1.f, 0.f, 1.f, rgba0, rgba1, rgba2, rgba3);
-
-    _Vita_DoneWithDrawCall();
-}
-
-void Vita_DrawRectColor(float x, float y,
-                        float wDst, float hDst,
-                        float _r, 
-                        float _g,
-                        float _b, 
-                        float _a)
-{
-    float rgba0[4] = {_r, _g, _b, _a};
-    Vita_DrawRect4xColor(x, y, wDst, hDst, rgba0, rgba0, rgba0, rgba0);
-}
-
-void Vita_DrawRectColorExData(float x, float y,
-                           float wDst, float hDst,
-                           float _r,
-                           float _g,
-                           float _b,
-                           float _a,
-                           obj_extra_data *ex_data)
-{
-    float rgba0[4] = {_r, _g, _b, _a};
-    DrawCall *_curDrawCall = _Vita_GetAvailableDrawCall();
-
-    if(ex_data != NULL)
-        ex_data->textureID = 0;
-
-    _curDrawCall->verts[0].obj_ptr = ex_data;
-    _curDrawCall->verts[1].obj_ptr = ex_data;
-    _curDrawCall->verts[2].obj_ptr = ex_data;
-    _curDrawCall->verts[3].obj_ptr = ex_data;
-
-
-    // _curDrawCall->scale = 1.0f;
-    // _curDrawCall->rot_x = 0;
-    // _curDrawCall->rot_y = 0;
-    // _curDrawCall->rot_z = rot;
-    // _curDrawCall->piv_x = x + (wDst * .5f);
-    // _curDrawCall->piv_y = y + (hDst * .5f);
-
-    _Vita_WriteVertices4xColor(_curDrawCall, x, y, wDst, hDst, 1.f, 1.f, 1.f, 1.f, rgba0, rgba0, rgba0, rgba0);
-
-    _Vita_DoneWithDrawCall();
-
-}
-
-
-void Vita_Draw(float x,
-               float y,
-               float wDst,
-               float hDst)
-{
-    
-    DrawCall *_curDrawCall = _Vita_GetAvailableDrawCall();
-    
-    for(int i = 0; i < VERTICES_PER_PRIM; i++)
-        _curDrawCall->verts[i].obj_ptr = NULL;
-#if 0
-    _curDrawCall->scale = 1.0f;
-#endif
-
-    _Vita_WriteVertices(_curDrawCall, x, y, wDst, hDst, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f);
-    
-    _Vita_DoneWithDrawCall();
-}
-
-// DEPRECATED
-void Vita_DrawTextureAnimColorRotScale(
-        float x,
-        float y,
-        float wDst,
-        float hDst,
-        GLuint texId,
-        float tex_w,
-        float tex_h,
-        float src_x,
-        float src_y,
-        float src_w,
-        float src_h,
-        float _r,
-        float _g,
-        float _b,
-        float _a,
-        float _rot,
-        float _scale)
-{
-    DrawCall *_curDrawCall = _Vita_GetAvailableDrawCall();
-    if(_curDrawCall == NULL) return;
-
-    
-#if 0
-    _curDrawCall->textureID = texId;
-    _curDrawCall->piv_x = x + (wDst * .5f);
-    _curDrawCall->piv_y = y + (hDst * .5f);
-    _curDrawCall->rot_z = _rot;
-    _curDrawCall->scale = _scale;
-#endif
-
-#ifdef HALF_TEX
-    tex_w = float(texture.w) / float(2),
-    tex_h = float(texture.h) / float(2);
-#else
-#endif
-    float n_src_x = (src_x / tex_w);
-    float n_src_x2 = ((src_x + src_w) / tex_w);
-    float n_src_y = (src_y / tex_h);
-    float n_src_y2 = ((src_y + src_h) / tex_h);
-
-    _Vita_WriteVertices(
-        _curDrawCall, 
-        x, 
-        y, 
-        wDst, 
-        hDst, 
-        n_src_x, 
-        n_src_x2, 
-        n_src_y, 
-        n_src_y2, 
-        _r, _g, _b, _a);
-    
-    _Vita_DoneWithDrawCall();
-}
-
-void Vita_DrawTextureAnimColorExData(
-        float x,
-        float y,
-        float wDst,
-        float hDst,
-        GLuint texId,
-        float tex_w,
-        float tex_h,
-        float src_x,
-        float src_y,
-        float src_w,
-        float src_h,
-        float _r,
-        float _g,
-        float _b,
-        float _a,
-        obj_extra_data *ex_data)
-{
-
-    DrawCall *_curDrawCall = _Vita_GetAvailableDrawCall();
-    if(_curDrawCall == NULL) return;
-
-    if(ex_data != NULL && ex_data->textureID != texId)
-        ex_data->textureID = texId;
-
-    for(int i = 0; i < VERTICES_PER_PRIM; i++)
-        _curDrawCall->verts[i].obj_ptr = (void*)ex_data;
-    
-#if 0
-    _curDrawCall->piv_x = x + (wDst * .5f);
-    _curDrawCall->piv_y = y + (hDst * .5f);
-#endif
-
-    float n_src_x = (src_x / tex_w);
-    float n_src_x2 = ((src_x + src_w) / tex_w);
-    float n_src_y = (src_y / tex_h);
-    float n_src_y2 = ((src_y + src_h) / tex_h);
-
-    _Vita_WriteVertices(
-        _curDrawCall, 
-        x, 
-        y, 
-        wDst, 
-        hDst, 
-        n_src_x, 
-        n_src_x2, 
-        n_src_y, 
-        n_src_y2, 
-        _r, _g, _b, _a);
-    
-    _Vita_DoneWithDrawCall();
-
-    // Vita_DrawTextureAnimColorRotScale(x, y, wDst, hDst, texId, tex_w, tex_h, src_x, src_y, src_w, src_h, _r, _g, _b, _a, _rot, 1.f);
-}
-
-void Vita_DrawTextureAnimColor(
-        float x,
-        float y,
-        float wDst,
-        float hDst,
-        GLuint texId,
-        float tex_w,
-        float tex_h,
-        float src_x,
-        float src_y,
-        float src_w,
-        float src_h,
-        float _r,
-        float _g,
-        float _b,
-        float _a)
-{
-    Vita_DrawTextureAnimColorExData(x, y, wDst, hDst, texId, tex_w, tex_h, src_x, src_y, src_w, src_h, _r, _g, _b, _a, NULL);
 }
 
 static GLuint Vita_GetVertexBufferID() { return _vertexBufferID; }
@@ -455,7 +364,233 @@ GLuint LoadShader(GLenum type, const char *shaderSrc)
     return shader;
 }
 
-// ------------------------------------------ PASSES
+// ------------------------------------------   END INTERNAL FUNCTIONS
+
+// ------------------------------------------   EXPOSED 2D DRAW FUNCTIONS
+
+/**
+ * Vita_DrawRect4xColor():
+ *  Draws a colored rect of a given wDst and hDst
+ *  with a unique rgba color for each vertex.
+ */
+void Vita_DrawRect4xColor(float x, float y,
+                          float wDst, float hDst,
+                          float rgba0[4],
+                          float rgba1[4],
+                          float rgba2[4],
+                          float rgba3[4])
+{
+    DrawCall *_curDrawCall = _Vita_GetAvailableDrawCall();
+
+    for(int i = 0; i < 4; i++)
+        _curDrawCall->verts[i].obj_ptr = 0;
+
+    _Vita_WriteVertices4xColor(_curDrawCall, x, y, wDst, hDst, 0.f, 1.f, 0.f, 1.f, rgba0, rgba1, rgba2, rgba3);
+
+    _Vita_DoneWithDrawCall();
+}
+
+
+/**
+ * Vita_DrawRectColor():
+ *  Draws a colored rect of a given wDst and hDst.
+ */
+void Vita_DrawRectColor(float x, float y,
+                        float wDst, float hDst,
+                        float _r, 
+                        float _g,
+                        float _b, 
+                        float _a)
+{
+    float rgba0[4] = {_r, _g, _b, _a};
+    Vita_DrawRect4xColor(x, y, wDst, hDst, rgba0, rgba0, rgba0, rgba0);
+}
+
+/**
+ * Vita_DrawRectColorExData():
+ *  Draws a colored rect with the option of passing in 
+ *  pointer to `ex_data` for scale, rotation, and pivot data.
+ */
+void Vita_DrawRectColorExData(float x, float y,
+                           float wDst, float hDst,
+                           float _r,
+                           float _g,
+                           float _b,
+                           float _a,
+                           obj_extra_data *ex_data)
+{
+    float rgba0[4] = {_r, _g, _b, _a};
+    DrawCall *_curDrawCall = _Vita_GetAvailableDrawCall();
+
+    if(ex_data != NULL)
+        ex_data->textureID = 0;
+
+    _curDrawCall->verts[0].obj_ptr = ex_data;
+    _curDrawCall->verts[1].obj_ptr = ex_data;
+    _curDrawCall->verts[2].obj_ptr = ex_data;
+    _curDrawCall->verts[3].obj_ptr = ex_data;
+
+
+    // _curDrawCall->scale = 1.0f;
+    // _curDrawCall->rot_x = 0;
+    // _curDrawCall->rot_y = 0;
+    // _curDrawCall->rot_z = rot;
+    // _curDrawCall->piv_x = x + (wDst * .5f);
+    // _curDrawCall->piv_y = y + (hDst * .5f);
+
+    _Vita_WriteVertices4xColor(_curDrawCall, x, y, wDst, hDst, 1.f, 1.f, 1.f, 1.f, rgba0, rgba0, rgba0, rgba0);
+
+    _Vita_DoneWithDrawCall();
+
+}
+
+/**
+ * Vita_Draw():
+ *  You probably don't want this function.
+ *  Simply draws a white quad on screen with the
+ *  given wDst & hDst.
+ */
+void Vita_Draw(float x,
+               float y,
+               float wDst,
+               float hDst)
+{
+    
+    DrawCall *_curDrawCall = _Vita_GetAvailableDrawCall();
+    
+    for(int i = 0; i < VERTICES_PER_PRIM; i++)
+        _curDrawCall->verts[i].obj_ptr = NULL;
+#if 0
+    _curDrawCall->scale = 1.0f;
+#endif
+
+    _Vita_WriteVertices(_curDrawCall, x, y, wDst, hDst, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f);
+    
+    _Vita_DoneWithDrawCall();
+}
+
+/**
+ * Vita_DrawTextureAnimColorExData():
+ * 
+ *  Draws a sub-sprite from a given texId.
+ *  The sample area is defined by passing total tex_w & tex_h,
+ *  along with src_x/src_y & src_w/src_h.
+ * 
+ *  The tex_w & tex_h is used to normalize the given src coordinates
+ *  into graphics texture space.
+ * 
+ *  You can also specify a pointer to `ex_data` for setting
+ *  scaling, rotation, and pivot data. 
+ */
+void Vita_DrawTextureAnimColorExData(
+        float x,
+        float y,
+        float wDst,
+        float hDst,
+        GLuint texId,
+        float tex_w,
+        float tex_h,
+        float src_x,
+        float src_y,
+        float src_w,
+        float src_h,
+        float _r,
+        float _g,
+        float _b,
+        float _a,
+        obj_extra_data *ex_data)
+{
+
+    DrawCall *_curDrawCall = _Vita_GetAvailableDrawCall();
+    if(_curDrawCall == NULL) return;
+
+    if(ex_data != NULL && ex_data->textureID != texId)
+    {
+        if(texId == 0) _debugPrintf("WARNING: Draw Texture called without texture passed.");
+        ex_data->textureID = texId;
+    }
+
+    for(int i = 0; i < VERTICES_PER_PRIM; i++)
+        _curDrawCall->verts[i].obj_ptr = (void*)ex_data;
+    
+#if 0
+    _curDrawCall->piv_x = x + (wDst * .5f);
+    _curDrawCall->piv_y = y + (hDst * .5f);
+#endif
+
+    float n_src_x = (src_x / tex_w);
+    float n_src_x2 = ((src_x + src_w) / tex_w);
+    float n_src_y = (src_y / tex_h);
+    float n_src_y2 = ((src_y + src_h) / tex_h);
+
+    _Vita_WriteVertices(
+        _curDrawCall, 
+        x, 
+        y, 
+        wDst, 
+        hDst, 
+        n_src_x, 
+        n_src_x2, 
+        n_src_y, 
+        n_src_y2, 
+        _r, _g, _b, _a);
+    
+    _Vita_DoneWithDrawCall();
+
+    // Vita_DrawTextureAnimColorRotScale(x, y, wDst, hDst, texId, tex_w, tex_h, src_x, src_y, src_w, src_h, _r, _g, _b, _a, _rot, 1.f);
+}
+
+/**
+ * Vita_DrawTextureAnimColor():
+ *  Draws a sub sprite from a given texId.
+ *  
+ *  Sample area is defined by passing total tex_w/tex_h
+ *  along with src_x/src_y & src_w/src_h.
+ *  
+ *  tex_w and tex_h are used to normalize the src coordinates
+ *  into texture coord space.
+ *  
+ *  A tint may be specified by passing color. 
+ *  However, for scale & rotation, see @ Vita_DrawTextureAnimColorExData.
+ */
+void Vita_DrawTextureAnimColor(
+        float x,
+        float y,
+        float wDst,
+        float hDst,
+        GLuint texId,
+        float tex_w,
+        float tex_h,
+        float src_x,
+        float src_y,
+        float src_w,
+        float src_h,
+        float _r,
+        float _g,
+        float _b,
+        float _a)
+{
+    Vita_DrawTextureAnimColorExData(x, y, wDst, hDst, texId, tex_w, tex_h, src_x, src_y, src_w, src_h, _r, _g, _b, _a, NULL);
+}
+
+// ------------------------------------------   END EXPOSED 2D DRAW FUNCTIONS
+
+// ------------------------------------------ ADDING PASSES
+
+/**
+ * Vita_AddShaderPass():
+ *  Adds a shader pass with the given shader source text
+ *  of vert_shader and frag_shader. 
+ *  The pass will be placed relative to index 2 in the list. 
+ * 
+ * 
+ *  vert_shader and frag_shader are allowed to be NULL.
+ *  However, if both are NULL, the pass will not be added.
+ *  If either are NULL, their default program ID will be substituted.
+ * 
+ *  This makes it possible to add a pass with the exact same vertex shader,
+ *  but alternative fragment shader.
+ */
 int Vita_AddShaderPass(char* vert_shader, char* frag_shader, int order)
 {
     int add_idx = 3 + order;
@@ -511,7 +646,7 @@ int Vita_AddShaderPass(char* vert_shader, char* frag_shader, int order)
         _debugPrintf("!!!!! ERROR: Could not link shader.\n");
         GLint length;
 	    glGetProgramiv(_newProgProgram,GL_INFO_LOG_LENGTH,&length);
-	    unsigned char* log = (unsigned char*)malloc(length);
+	    char* log = (char*)malloc(length);
 		
 	    glGetProgramInfoLog(_newProgProgram,200,&length,log);
 
@@ -540,10 +675,25 @@ int Vita_AddShaderPass(char* vert_shader, char* frag_shader, int order)
     Vita_AddPass(passInfo, order);
     return 0;
 }
+
 // ------------------------------------------ END PASSES
 
 // ------------------------------------------    INIT FUNCTIONS
 
+/**
+ * initGLShading2():
+ *  Initializes OpenGL/vitaGL shader support.
+ * 
+ *  The following will happen:
+ *    - The shader source passed in _vShaderString and _fShaderString
+ *      will be loaded into OpenGL.
+ *    - If they pass, a program will be created and these shaders will
+ *      be linked.
+ *    - If the program is created successfully, then the proper attribute
+ *      and uniform indices will be retrieved from the program.
+ *  
+ *  returns 0 if the function completed successfully
+ */
 int initGLShading2(char* _vShaderString, char* _fShaderString)
 {
     _debugPrintf("(NOTE): Init GL Shading 2. Initializing GL Shading with shader strings passed to us externally (by the user).\n");
@@ -599,24 +749,9 @@ int initGLShading2(char* _vShaderString, char* _fShaderString)
     
 #ifdef VITA
     VERTEX_POS_INDEX = glGetAttribLocation(programObjectID, "aPosition");
-    VERTEX_TEXCOORD_INDEX = glGetAttribLocation(programObjectID, "vTexCoord");
-    VERTEX_COLOR_INDEX = glGetAttribLocation(programObjectID, "vColor");
-    // TODO: mvp mat4 for CG shader
-    // TODO: color float4 for CG shader.
-    // Uniforms
-    VERTEX_MVP_INDEX = glGetUniformLocation(programObjectID, "mvp"); // MVP matrix. In our case, this is an ortho matrix for the Vita's screen.
-
-    UNIFORM_ROTMAT_INDEX = glGetUniformLocation(programObjectID, "_rot");
-    UNIFORM_SCALE_INDEX = glGetUniformLocation(programObjectID, "_scale");
-    
-    glm_mat4_identity(_rot);
-    glm_mat4_identity(_rot_arb);
-
-    glm_mat4_identity(_scale);
-    glm_mat4_identity(_scale_arb);
 #else
-    // Attribs
     VERTEX_POS_INDEX = glGetAttribLocation(programObjectID, "vPosition"); // Vertex position.
+#endif
     VERTEX_TEXCOORD_INDEX = glGetAttribLocation(programObjectID, "vTexCoord"); // Vertex Tex Coord.
     VERTEX_COLOR_INDEX = glGetAttribLocation(programObjectID, "vColor"); // Gets passed to the fragment shader.
 
@@ -626,6 +761,8 @@ int initGLShading2(char* _vShaderString, char* _fShaderString)
     UNIFORM_ROTMAT_INDEX = glGetUniformLocation(programObjectID, "_rot");
     UNIFORM_SCALE_INDEX = glGetUniformLocation(programObjectID, "_scale");
     
+    UNIFORM_USE_TEXTURE_BOOL_INDEX = glGetUniformLocation(programObjectID, "useTexture");
+
     glm_mat4_identity(_rot);
     glm_mat4_identity(_rot_arb);
 
@@ -636,8 +773,6 @@ int initGLShading2(char* _vShaderString, char* _fShaderString)
     _shading_passes[2].offset_x = 0;
     _shading_passes[2].offset_y = 0;
     
-    // TODO: vec2 for texcoords.
-#endif
 #ifndef VITA
     if(VERTEX_POS_INDEX <= -1)
     {
@@ -718,10 +853,12 @@ int deInitGL()
     return 0;
 }
 
+#ifndef VITA
 static void glfwError(int id, const char* description)
 {
     _debugPrintf("[GLFW] ERROR ID %d: %s\n", id, description);
 }
+#endif
 
 int initGL(void (*dbgPrintFn)(const char*, ...))
 {
@@ -729,6 +866,8 @@ int initGL(void (*dbgPrintFn)(const char*, ...))
     {
         return -1;
     }
+
+    start_time_s = time(NULL);
 
     _debugPrintf = dbgPrintFn;
 
@@ -779,7 +918,7 @@ int initGL(void (*dbgPrintFn)(const char*, ...))
     _debugPrintf("[main] GLEWInit: %d\n", glewReturnVal);
 #endif
 
-    glClearColor(.1f, .5f, .1f, 1.0f);
+    glClearColor(0.f, 0.f, 0.f, 1.0f);
 
     glEnable(GL_TEXTURE_2D);
     glEnable(GL_BLEND);
@@ -793,7 +932,7 @@ int initGL(void (*dbgPrintFn)(const char*, ...))
     // TODO: Check for retina on Apple machines.
     glm_ortho_lh_zo(0, DISPLAY_WIDTH, DISPLAY_HEIGHT, 0, -1, 1, cpu_mvp);
 #else
-    glm_ortho_lh_zo(0, DISPLAY_WIDTH * 2, DISPLAY_HEIGHT * 2, 0, -1, 1, cpu_mvp);
+    glm_ortho_lh_zo(0, DISPLAY_WIDTH, DISPLAY_HEIGHT, 0, -1, 1, cpu_mvp);
 #endif
 
     // glMatrixMode(GL_MODELVIEW);
@@ -811,20 +950,26 @@ int initGL(void (*dbgPrintFn)(const char*, ...))
 
 // ------------------------------------------ END INIT FUNCTIONS
 
+void Vita_SetClearColor(float r, float g, float b, float a)
+{
+    _debugPrintf("[vgl_renderer.c] Setting clear color to (%.1f, %.1f, %.1f, %.1f)", r, g, b, a);
+    glClearColor(r, g, b, a);
+}
+
 /**
- * clear(): 
+ * Vita_Clear(): 
  *  Clears the screen's color buffer using glClear.
  *  Then, calls Vita_ResetTotalCalls() to reset the 
  *  number of draw calls in our queue.
  */
-void clear()
+void Vita_Clear()
 {
     glClear(GL_COLOR_BUFFER_BIT);
     Vita_ResetTotalCalls();
 }
 
 /**
- * repaint():
+ * Vita_Repaint():
  *  Repaint does the following.
  *      1. Buffers the CPU calculated vertices into the GPU.
  *      2. Sets up the vertex attrib pointers for the shader based on the data.
@@ -836,7 +981,7 @@ void clear()
  *         tries to render the full list as one quad and the fact that glDrawElements
  *         requires an indices list. 
  */
-void repaint()
+void Vita_Repaint()
 {
     const GLsizei stride = VERTEX_ATTRIB_TOTAL_SIZE_1; // NOT Tightly packed. 4 verts per GL_TRIANGLE_STRIP
     uint32_t draw_calls = Vita_GetTotalCalls();
@@ -846,17 +991,14 @@ void repaint()
         _debugPrintf("Too many calls (%d / %d).\n", draw_calls, GL_MAX_VERTEX_ATTRIBS);
     }
 
+    // qsort(_vgl_pending_calls, draw_calls, sizeof(DrawCall), _Vita_SortDrawCalls);
+
     GLuint _vbo = Vita_GetVertexBufferID(); // Get OpenGL handle to our vbo. (On the GPU)
     
     if(_vbo != 0)
     {
         // Get pointer to the pending drawcalls.
         struct _DrawCall *calls = Vita_GetDrawCallsPending();
-        int i = 0;
-
-        uint32_t offset = 0; // OFFSET: byte offset into memory. where to PUT our element.
-        uint32_t sizeCopy = 0; // the size of one vertex.
-        GLint gpuBufferSize = 0; // total size of the GPU buffer, so we make sure not to overload.
 
         glBindBuffer(GL_ARRAY_BUFFER, _vbo); // Bind our vbo through OpenGL.
         CHECK_GL_ERROR("bind");
@@ -866,10 +1008,9 @@ void repaint()
     }
     else return;
 
-    // TODO: Is this necessary? Our _vbo should still be bound.
-    glBindBuffer(GL_ARRAY_BUFFER, _vbo); // Bind the vbo we've written to.
-    glUseProgram(programObjectID); // Begin using our vert/frag shader combo (program)
+    // TODO: Did removing glBindBuffer from here cause issues?
 
+    glUseProgram(programObjectID); // Begin using our vert/frag shader combo (program)
 
     // ONLY enable these for data that you want to be
     // defined/ passed through the vertex attribute array.
@@ -893,112 +1034,111 @@ void repaint()
 
     // This is a "hack around".
     // Ideally, I'd be able to batch this all at once.
-    int i;
-    GLint _locUseTexture = glGetUniformLocation(programObjectID, "useTexture");
-    GLuint _curBoundTex = 0;
+    GLuint i;
+    GLuint _curBoundTex = -1;
+    GLuint _curReqTex = 0;
+    int totalTextureSwaps = 0;
     DrawCall _curDrawCall;
 
-    for (int p = 0; p < 6; p++)
+    glm_mat4_identity(_scale_arb);
+    glm_mat4_identity(_rot_arb);
+
+    glUniformMatrix4fv(UNIFORM_SCALE_INDEX, 1, GL_FALSE, (const GLfloat *)_scale_arb);
+    glUniformMatrix4fv(UNIFORM_ROTMAT_INDEX, 1, GL_FALSE, (const GLfloat *)_rot_arb);
+
+    int thisBatchStart = 0;
+    int thisBatch = 0;
+    for (i = 0; i < draw_calls; i++)
     {
-#if 0
-        _debugPrintf("Pass [%d]: ProgramID: %d, offset: (%.2f, %.2f)\n",
-                     p,
-                     _shading_passes[p].ProgramObjectID, _shading_passes[p].offset_x, _shading_passes[p].offset_y);
+        _curDrawCall = _vgl_pending_calls[i];
 
-
-        if (p == 5)
-            _debugPrintf("\n");
-#endif
-
-        if (_shading_passes[p].ProgramObjectID != 0)
+        if (_curDrawCall.verts != NULL)
         {
-            ShadingPass curPass = _shading_passes[p];
-            // _debugPrintf("!! New pass with program ID: %d\n", _shading_passes[p].ProgramObjectID);
-
-            for (i = 0; i < draw_calls; i++)
+            if(_curDrawCall.verts[0].obj_ptr != NULL)
             {
-                _curDrawCall = _vgl_pending_calls[i];
+                obj_extra_data ex_data = *((obj_extra_data *)_curDrawCall.verts[0].obj_ptr);
+                _curReqTex = (_curDrawCall.verts[0].obj_ptr != NULL) ? ex_data.textureID : 0;
 
-                if (_curDrawCall.verts != NULL && _curDrawCall.verts[0].obj_ptr != NULL)
+                // Only re-bind texture when it's different
+                // from what's currently bound.
+                if (_curBoundTex != _curReqTex)
                 {
-                    // _debugPrintf("!!!!!\t!!!!! HAS extra data ptr!\n");
-                    DEBUG_PRINT_OBJ_EX_DATA(((obj_extra_data *)_curDrawCall.verts[0].obj_ptr));
-                    obj_extra_data ex_data = *((obj_extra_data *)_curDrawCall.verts[0].obj_ptr);
+                    if (ex_data.textureID == 0)
+                        glUniform1i(UNIFORM_USE_TEXTURE_BOOL_INDEX, 0);
+                    else
+                        glUniform1i(UNIFORM_USE_TEXTURE_BOOL_INDEX, 1);
 
-                    // Only re-bind texture when it's different
-                    // from what's currently bound.
-                    if (_curBoundTex != ex_data.textureID)
-                    {
-
-                        if (ex_data.textureID == 0)
-                            glUniform1i(_locUseTexture, 0);
-                        else
-                            glUniform1i(_locUseTexture, 1);
-
-                        // _debugPrintf("[vgl_renderer] repaint(): TODO change bind texture from id %u to id %u\n", _curBoundTex, ex_data.textureID);
-                        glBindTexture(GL_TEXTURE_2D, ex_data.textureID);
-                        _curBoundTex = ex_data.textureID;
-                    }
-
-                    // TODO: Add offset to the basic shader.
-                    // glm_translate(cpu_mvp, (vec3){curPass.offset_x, curPass.offset_y, 0.f});
-
-                    
-
-                    glm_mat4_identity(_rot_arb);
-                    glm_rotate_atm(
-                        _rot_arb,
-                        (vec3){ex_data.piv_x, ex_data.piv_y, 0.f},
-                        glm_rad(ex_data.rot_z),
-                        (vec3){0.f, 0.f, 1.f});
-
-                    vec3 refVector = {ex_data.piv_x, ex_data.piv_y, 0.f};
-                    vec3 nRefVector = {-ex_data.piv_x, -ex_data.piv_y, 0.f};
-
-                    mat4 transRefTo;
-                    mat4 transRefFrom;
-                    mat4 transfScale;
-                    mat4 _temp1;
-                    glm_mat4_identity(transRefTo);
-                    glm_mat4_identity(transRefFrom);
-                    glm_mat4_identity(transfScale);
-                    glm_mat4_identity(_temp1);
-                    glm_translate(transRefTo, nRefVector);
-                    glm_translate(transRefFrom, refVector);
-
-                    glm_scale(transfScale, (vec3){ex_data.scale, ex_data.scale, ex_data.scale});
-                    glm_mat4_mul(transRefFrom, transfScale, _temp1);
-                    glm_mat4_mul(_temp1, transRefTo, _scale_arb);
+                    glBindTexture(GL_TEXTURE_2D, ex_data.textureID);
+                    _curBoundTex = ex_data.textureID;
+                    totalTextureSwaps++;
                 }
 
-                glUniformMatrix4fv(UNIFORM_SCALE_INDEX, 1, GL_FALSE, (const GLfloat *)_scale_arb);
-                glUniformMatrix4fv(UNIFORM_ROTMAT_INDEX, 1, GL_FALSE, (const GLfloat *)_rot_arb);
-
-                glDrawArrays(GL_TRIANGLE_STRIP, i * VERTICES_PER_PRIM, VERTICES_PER_PRIM);
-
-                glm_mat4_identity(_scale_arb);
+                // TODO: Add offset to the basic shader.
+                // glm_translate(cpu_mvp, (vec3){curPass.offset_x, curPass.offset_y, 0.f});
+                
                 glm_mat4_identity(_rot_arb);
+                glm_rotate_atm(
+                    _rot_arb,
+                    (vec3){ex_data.piv_x, ex_data.piv_y, 0.f},
+                    glm_rad(ex_data.rot_z),
+                    (vec3){0.f, 0.f, 1.f});
+
+                vec3 refVector = {ex_data.piv_x, ex_data.piv_y, 0.f};
+                vec3 nRefVector = {-ex_data.piv_x, -ex_data.piv_y, 0.f};
+
+                mat4 transRefTo;
+                mat4 transRefFrom;
+                mat4 transfScale;
+                mat4 _temp1;
+                glm_mat4_identity(transRefTo);
+                glm_mat4_identity(transRefFrom);
+                glm_mat4_identity(transfScale);
+                glm_mat4_identity(_temp1);
+                glm_translate(transRefTo, nRefVector);
+                glm_translate(transRefFrom, refVector);
+
+                glm_scale(transfScale, (vec3){ex_data.scale, ex_data.scale, ex_data.scale});
+                glm_mat4_mul(transRefFrom, transfScale, _temp1);
+                glm_mat4_mul(_temp1, transRefTo, _scale_arb);
             }
+            else
+            {
+                glUniform1i(UNIFORM_USE_TEXTURE_BOOL_INDEX, 0);
+                glBindTexture(GL_TEXTURE_2D, 0);
+                _curBoundTex = 0;
+                totalTextureSwaps++;
+            }
+
+            
+
+            
+            
+
+           // draw
+            glDrawArrays(GL_TRIANGLE_STRIP, i * VERTICES_PER_PRIM, VERTICES_PER_PRIM);
         }
-        // Revert shader state. 
-        glUniform1i(_locUseTexture, 0);
-        glBindTexture(GL_TEXTURE_2D, 0);
     }
 
-    glFlush();
-    
-    
+    if(last_frame_time_s != 0)
+    {
+        clock_t cur_time = clock();
+        last_frame_time_consumed_s = (cur_time - last_frame_time_s);
+    }
+
+    // Revert shader state.
+    glUniform1i(UNIFORM_USE_TEXTURE_BOOL_INDEX, 0);
+    glBindTexture(GL_TEXTURE_2D, 0);
 
     // Reverting state.
     glDisableVertexAttribArray(VERTEX_POS_INDEX);
     glDisableVertexAttribArray(VERTEX_TEXCOORD_INDEX);
     glDisableVertexAttribArray(VERTEX_COLOR_INDEX);
     
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glUseProgram(0);
+    // glBindBuffer(GL_ARRAY_BUFFER, 0);
+    // glUseProgram(0);
 
     
-    glFinish();
+    // glFinish();
 
 FINISH_DRAWING:
 #ifdef VITA
@@ -1006,7 +1146,17 @@ FINISH_DRAWING:
 #else
     glfwSwapBuffers(_game_window);
     glfwPollEvents();
+
+    char temp[128];
+    snprintf(temp, 128, "Draw Calls: %d; Texture Swaps: %d; Frame Time Ticks: %d (%.6f s, %.4f ms)", draw_calls, totalTextureSwaps, last_frame_time_consumed_s, ((float)clock() - (float)last_frame_time_s) / CLOCKS_PER_SEC, (((float)clock() - (float)last_frame_time_s) / CLOCKS_PER_SEC) * 1000.f);
+
+    glfwSetWindowTitle(_game_window, temp);
 #endif
 
     Vita_ResetTotalCalls();
+    last_frame_time_s = clock();
 }
+
+#ifdef __cplusplus
+}
+#endif

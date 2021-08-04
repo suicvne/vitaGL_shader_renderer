@@ -66,7 +66,11 @@ typedef struct _e
     obj_extra_data *ex_data;
 } _entity;
 
-_entity _test_entities[32];
+#ifndef ENTITY_COUNT
+#define ENTITY_COUNT 3000
+#endif
+
+_entity _test_entities[ENTITY_COUNT];
 
 int min(int a, int b)
 {
@@ -85,7 +89,7 @@ int init_debug()
 
 void init_entities()
 {
-    for(int i = 0; i < 32; i++)
+    for(int i = 0; i < ENTITY_COUNT; i++)
     {
         _test_entities[i].x = rand() % 1000;
         _test_entities[i].y = rand() % 1000;
@@ -102,7 +106,7 @@ void init_entities()
 
 void free_entities()
 {
-    for(int i = 0; i < 32; i++)
+    for(int i = 0; i < ENTITY_COUNT; i++)
     {
         free(_test_entities[i].ex_data);
     }
@@ -110,7 +114,7 @@ void free_entities()
 
 void update_entities(float _ticks)
 {
-    for(int i = 0; i < 32; i++)
+    for(int i = 0; i < ENTITY_COUNT; i++)
     {
         _test_entities[i].x += (_test_entities[i].speed * ((rand() % 2) == 1 ? -1 : 1) * _ticks) / _ticks;
         _test_entities[i].y += (_test_entities[i].speed * ((rand() % 2) == 1 ? -1 : 1) * _ticks) / _ticks;
@@ -134,7 +138,7 @@ void update_entities(float _ticks)
 
 void render_entities()
 {
-    for(int i = 0; i < 32; i++)
+    for(int i = 0; i < ENTITY_COUNT; i++)
     {
         Vita_DrawTextureAnimColorExData(
             _test_entities[i].x, _test_entities[i].y,
@@ -228,6 +232,30 @@ static obj_extra_data test_sprite_2 =
     0.f, 0.f, 0.f,
     1.f
 };
+
+short should_render_overlay = 1;
+
+// const float rgba[4][4] = 
+// {
+//     0.f, 0.f, 0.f, 0.5f,
+//     1.f, 0.f, 0.f, 0.5f,
+//     0.f, 1.f, 0.f, 0.5f,
+//     0.f, 0.f, 1.f, 0.5f
+// };
+
+const float rgba[4][4] = 
+{
+    0.f, 0.f, 0.f, .75f,
+    1.f, 0.f, 0.f, .75f,
+    0.f, 1.f, 0.f, .75f,
+    0.f, 0.f, 1.f, .75f
+};
+
+void render_overlay()
+{
+    // Vita_DrawRect4xColor(40, 40, DISPLAY_WIDTH_DEF - 40, DISPLAY_HEIGHT_DEF - 40, rgba[0], rgba[1], rgba[2], rgba[3]);
+    Vita_DrawRect4xColor(10, 10, DISPLAY_WIDTH_DEF - 20, DISPLAY_HEIGHT_DEF - 20, rgba[0], rgba[1], rgba[2], rgba[3]);
+}
 
 
 int main()
@@ -323,7 +351,7 @@ int main()
     while(run == 1)
     {
         // clear current vbo
-        clear();
+        Vita_Clear();
 
         Vita_DrawRectColor(fabs(cos(_ticks * .5f) * (300)) + 4, 4, 32, 32, .2f, .2f, .2f, .58f);
         Vita_Draw(fabs(cos(_ticks * .5f) * (300 + 0)), 0, 32, 32);
@@ -373,14 +401,16 @@ int main()
             &test_sprite_2 // sin((_ticks * .2f)) * 360.f // Rot.
         ); 
 
-
         render_entities();
+
+        render_overlay();
+        
 
         // Vita_DrawRectColorRot(0, 0, 9.5f, 9.5f, 0.f, 1.f, 0.f, 0.2f, 1.0f);
 
 
         // Draw from vbo, swap to next vbo
-        repaint();
+        Vita_Repaint();
 #ifdef VITA
         _ticks += .077f;
 #else

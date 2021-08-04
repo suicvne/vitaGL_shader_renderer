@@ -1,3 +1,8 @@
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 #ifndef __VGL_RENDERER_H__
 #define __VGL_RENDERER_H__
 
@@ -22,6 +27,7 @@
 #include <stdlib.h>
 #include <memory.h>
 #include <string.h>
+#include <time.h>
 
 #define VERTICES_PER_QUAD 4
 #define VERTICES_PER_TRI 3
@@ -39,45 +45,17 @@
 // for just x & y, it's 2. this is used for stride.
 // In this case, we have (x, y) (s, v) and (r,g,b,a) available to us.
 #define VERTEX_ATTR_ELEM_COUNT 8
-#define MAX_VERTICES 1024 // TODO: This should be renamed to MAX_DRAWCALLS. We allocate our VBO with memory to fill MAX_VERTICES * sizeof(DrawCall)
+#define MAX_VERTICES 8096 // TODO: This should be renamed to MAX_DRAWCALLS. We allocate our VBO with memory to fill MAX_VERTICES * sizeof(DrawCall)
 
 #define VERTEX_ATTRIB_TOTAL_SIZE_1 (VERTEX_ATTR_ELEM_COUNT * sizeof(float)) + (sizeof(void *))
 
+#include "vgl_renderer_types.h"
+
 typedef unsigned int GLuint;
 
-typedef struct _vert 
-{
-    float x, y;
-    float s, v; // Tex Coord X, Tex Coord Y
-    float _r, _g, _b, _a;
-
-    void *obj_ptr;
-} __attribute__ ((packed)) vert;
-
-typedef struct _obj_extra_data 
-{
-    GLuint textureID;
-    float piv_x;
-    float piv_y;
-    float rot_x;
-    float rot_y;
-    float rot_z;
-    float scale;
-} __attribute__ ((packed)) obj_extra_data;
-
-typedef struct _shading_pass
-{
-    unsigned int ProgramObjectID;
-    unsigned int VertexShaderID;
-    unsigned int FragmentShaderID;
-    float offset_x;
-    float offset_y;
-} __attribute__ ((packed)) ShadingPass;
-
-typedef struct _DrawCall
-{
-    struct _vert verts[VERTICES_PER_PRIM];
-} __attribute__ ((packed)) DrawCall;
+static clock_t start_time_s = 0;
+static clock_t last_frame_time_s = 0;
+static clock_t last_frame_time_consumed_s = 0; // cur_time - last_frame_time
 
 static const char* GLINVALIDENUM = "GL_INVALID_ENUM";
 static const char* GLINVALIDVALUE = "GL_INVALID_VALUE";
@@ -89,7 +67,6 @@ static const char* GLUNKNOWN = "GL_UNKNOWN. Sorry.";
 
 static inline void DEBUG_PRINT_OBJ_EX_DATA(struct _obj_extra_data *ex_data)
 {
-    return;
     if(ex_data == NULL) return;
 
     printf("\tEX_DATA\n\ttex ID: %d\n\tpiv: %.2f, %.2f\n\trot: %.2f, %.2f, %.2f\n\tscale: %.2f\n\n",
@@ -150,11 +127,6 @@ static inline void CHECK_GL_ERROR(char* prefix)
 #endif
 }
 
-static inline void pLogDebug(const char* a, ...)
-{
-    (void)a;
-}
-
 static inline void _printGLVersion()
 {
     GLenum enums[] = { GL_VERSION, GL_SHADING_LANGUAGE_VERSION, GL_VENDOR, GL_RENDERER };
@@ -192,6 +164,7 @@ static inline void _printGLVersion()
 
 // TODO: Combine the 3 inits into one init function?
 // TODO: Function prefixes.
+
 int initGL(void (*dbgPrintFn)(const char*, ...));
 int initGLAdv();
 int initGLShading();
@@ -199,14 +172,19 @@ int initGLShading2(char* vertex_shader, char* fragment_shader);
 int deInitGL();
 
 // TODO: Function prefixes for these.
-void clear();
-void repaint();
+void Vita_SetClearColor(float r, float g, float b, float a);
+void Vita_Clear();
+void Vita_Repaint();
 
 int Vita_AddShaderPass(char* vert_shader, char* frag_shader, int order);
 
+/// The most basic of draw functions. Draws a white square at a given point.
 void Vita_Draw(float x, float y, float wDst, float hDst);
 
-
+/**
+ * Vita_DrawRectColor():
+ *  Draws a colored rect of a given wDst and hDst.
+ */
 void Vita_DrawRectColor(float x, float y,
                         float wDst, float hDst,
                         float _r,
@@ -215,6 +193,24 @@ void Vita_DrawRectColor(float x, float y,
                         float _a
 );
 
+/**
+ * Vita_DrawRect4xColor():
+ *  Draws a colored rect of a given wDst and hDst
+ *  with a unique rgba color for each vertex.
+ */
+void Vita_DrawRect4xColor(float x, float y,
+                          float wDst, float hDst,
+                          float rgba0[4],
+                          float rgba1[4],
+                          float rgba2[4],
+                          float rgba3[4]
+);
+
+/**
+ * Vita_DrawRectColorExData():
+ *  Draws a colored rect with the option of passing in 
+ *  pointer to `ex_data` for scale, rotation, and pivot data.
+ */
 void Vita_DrawRectColorExData(float x, float y,
                            float wDst, float hDst,
                            float _r,
@@ -224,31 +220,19 @@ void Vita_DrawRectColorExData(float x, float y,
                            struct _obj_extra_data *ex_data
 );
 
-/*
-void Vita_DrawTextureAnimColorRotScale(
-    float x,
-    float y,
-    float wDst,
-    float hDst,
-    GLuint texId,
-    float tex_w,
-    float tex_h,
-    float src_x,
-    float src_y,
-    float src_w,
-    float src_h,
-    float _r,
-    float _g,
-    float _b,
-    float _a,
-    float _rot,
-    float _scale
-);
-*/
-
-// Formerly Vita_DrawTextureAnimColorRot
-
-// Change to take ex data
+/**
+ * Vita_DrawTextureAnimColorExData():
+ * 
+ *  Draws a sub-sprite from a given texId.
+ *  The sample area is defined by passing total tex_w & tex_h,
+ *  along with src_x/src_y & src_w/src_h.
+ * 
+ *  The tex_w & tex_h is used to normalize the given src coordinates
+ *  into graphics texture space.
+ * 
+ *  You can also specify a pointer to `ex_data` for setting
+ *  scaling, rotation, and pivot data. 
+ */
 void Vita_DrawTextureAnimColorExData(
     float x,
     float y,
@@ -268,6 +252,19 @@ void Vita_DrawTextureAnimColorExData(
     struct _obj_extra_data *ex_data
 );
 
+/**
+ * Vita_DrawTextureAnimColor():
+ *  Draws a sub sprite from a given texId.
+ *  
+ *  Sample area is defined by passing total tex_w/tex_h
+ *  along with src_x/src_y & src_w/src_h.
+ *  
+ *  tex_w and tex_h are used to normalize the src coordinates
+ *  into texture coord space.
+ *  
+ *  A tint may be specified by passing color. 
+ *  However, for scale & rotation, see @ Vita_DrawTextureAnimColorExData.
+ */
 void Vita_DrawTextureAnimColor(
     float x,
     float y,
@@ -289,3 +286,7 @@ void Vita_DrawTextureAnimColor(
 // ------------------------------------- End Functions for the public
 
 #endif //__VGL_RENDERER_H__
+
+#ifdef __cplusplus
+}
+#endif
