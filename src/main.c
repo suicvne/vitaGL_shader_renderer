@@ -17,7 +17,7 @@
 #ifdef VITA
 #include <debugnet.h>
 #ifndef NETDBG_IP_SERVER
-#define NETDBG_IP_SERVER "192.168.0.45"
+#define NETDBG_IP_SERVER "192.168.0.22"
 #endif
 #ifndef NETDBG_PORT_SERVER
 #define NETDBG_PORT_SERVER 18194
@@ -61,16 +61,19 @@ typedef struct _e
     float h;
     float speed;
     char enabled;
+
+    float tex_w, tex_h;
     
-    // Contains pivot, scale, and rot data
+    // Contains pivot, scale, and rot data along with texture ID.
     obj_extra_data *ex_data;
 } _entity;
 
 #ifndef ENTITY_COUNT
-#define ENTITY_COUNT 3000
+#define ENTITY_COUNT 1024
 #endif
 
 _entity _test_entities[ENTITY_COUNT];
+_entity _test_texture_entities[11];
 
 int min(int a, int b)
 {
@@ -158,17 +161,163 @@ void render_entities()
 static const char *_texture_1_path = "app0:bobomb_red.png";
 static const char *_vertex_shader = "app0:vert.cgv";
 static const char *_frag_shader = "app0:frag.cgf";
+
+static const char *_path_prefix = "app0:";
 #else
 static const char *_texture_1_path = "../bobomb_red.png";
 static const char *_vertex_shader = "../vert.glsl";
 static const char *_frag_shader = "../frag.glsl";
 
 static const char *_frag2_shader = "../frag_mm_shadow.glsl";
+
+
+static const char *_path_prefix = "../";
 #endif
 
+#define _textures_size 11
+static const char *_textures[_textures_size] = 
+{
+    "bobomb_red.png", // 0
+    "bobomb_black.png", // 1 
+    "background2-1.png", // 2
+    "background2-2.png", // 3
+    "block-4.png", // 4
+    "block-26.png", // 5
+    "block-188.png", // 6
+    "effect-1.png", // 7
+    "effect-51.png", // 8
+    "mario-4.png", // 9
+    "npc-24.png" // 10
+};
+
+static GLuint _textures_gl[_textures_size];
 
 
+int test_print_texture_path()
+{
+    debugPrintf("---Test Printing Textures---\n");
 
+    for(int i = 0; i < _textures_size; i++)
+    {
+        printf("[%d] `%s`\n", i, _textures[i]);
+    }
+
+    return 0;
+}
+
+int test_load_test_textures()
+{
+    char buffer[128];
+    void* tex_buffer = malloc(8);
+    int channels = 0, w = 0, h = 0;
+
+    // Vita_LoadTextureBuffer(_texture_1_path, &tex_buffer, &_tex_1_w, &_tex_1_h, &channels, (void*)debugPrintf);
+
+    for(int i = 0; i < _textures_size; i++)
+    {
+        // glGenTextures(1, &(_textures_gl[i]));
+        snprintf(buffer, 128, "%s%s", _path_prefix, _textures[i]);
+        Vita_LoadTextureBuffer(buffer, &tex_buffer, &w, &h, &channels, (void *)debugPrintf);
+
+        _textures_gl[i] = Vita_LoadTextureGL(tex_buffer, w, h, (void*)debugPrintf);
+
+        // glBindTexture(GL_TEXTURE_2D, _textures_gl[i]);
+        // CHECK_GL_ERROR((char *)"test_load_test_textures bind");
+        // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex_buffer);
+        // CHECK_GL_ERROR((char *)"test_load_test_textures upload");
+
+        if(_test_texture_entities[i].ex_data != NULL)
+        {
+            _test_texture_entities[i].tex_w = (float)w;
+            _test_texture_entities[i].tex_h = (float)h;
+            _test_texture_entities[i].ex_data->textureID = _textures_gl[i];
+
+            debugPrintf(
+                "Setting tex data to: ID: %u; size: (%.1f x %.1f). size returned: (%d x %d)\n\n\n", 
+                _test_texture_entities[i].ex_data->textureID,
+                _test_texture_entities[i].tex_w,
+                _test_texture_entities[i].tex_h,
+                w, h
+            );
+        }
+        else debugPrintf("WARNING: _test_texture_entities at %d dosn't have ex_data.\n");
+
+        memset(buffer, 0, 128);
+        
+    }
+
+    free(tex_buffer);
+    
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    return 0;
+}
+
+int init_texture_test_entities()
+{
+    for(int i = 0; i < _textures_size; i++)
+    {
+        _test_texture_entities[i].enabled = 1;
+        _test_texture_entities[i].x = 129 * i;
+        _test_texture_entities[i].y = 129 * i;
+
+        _test_texture_entities[i].w = 256;
+        _test_texture_entities[i].h = 256;
+        _test_texture_entities[i].ex_data = malloc(sizeof(obj_extra_data));
+        
+        _test_texture_entities[i].ex_data->piv_x = 0;
+        _test_texture_entities[i].ex_data->piv_y = 0;
+        _test_texture_entities[i].ex_data->rot_x = 0;
+        _test_texture_entities[i].ex_data->rot_y = 0;
+        _test_texture_entities[i].ex_data->rot_z = 0;
+        _test_texture_entities[i].ex_data->scale = 1.f;
+    }
+
+    return 0;
+}
+
+int assign_texIDs_texture_test_entities()
+{
+    for(int i = 0; i < _textures_size; i++)
+    {
+        _test_texture_entities[i].ex_data->textureID = _textures_gl[i];
+    }
+    return 0;
+}
+
+static obj_extra_data test_sprite_3 = 
+(obj_extra_data)
+{
+    0,
+    (DISPLAY_WIDTH_DEF / 2) + 100, (DISPLAY_HEIGHT_DEF / 2) + 100,
+    0.f, 0.f, 0.f,
+    1.f
+};
+
+
+int draw_texture_test_entities()
+{
+    for(int i = 0; i < 11; i++)
+    {
+        _entity e = _test_texture_entities[i];
+
+        // debugPrintf("Draw Test Entity: %.1f, %.1f (%.1f x %.1f) Tex ID: %d; Tex Size: (%.2f x %.2f)\n", e.x, e.y, e.w, e.h, e.ex_data->textureID, e.tex_w, e.tex_h);
+        
+        // debugPrintf("Tex ID: %d Tex Size: %.2f x %.2f\n", e_d.textureID, e.tex_w, e.tex_h);
+
+        if(i == 4)
+        {
+            for(int x = 0; x < 300; x++)
+            {
+                Vita_DrawTextureAnimColorExData(x * 32.f, (x % 600) + (sinf(_ticks) * 64.f), 32.f, 32.f, e.ex_data->textureID,
+                    e.tex_w, e.tex_h, 0, 0, 32.f, 32.f, 1.f, 1.f, 1.f, 1.f, e.ex_data);
+            }
+            continue;   
+        }
+        Vita_DrawTextureAnimColorExData(e.x, e.y, e.w, e.h, 
+            e.ex_data->textureID, e.tex_w, e.tex_h, 0.f, 0.f, e.tex_w, e.tex_h, 1.f, 1.f, 1.f, 1.f, e.ex_data);    
+    }
+}
 
 int bm_test()
 {
@@ -235,35 +384,41 @@ static obj_extra_data test_sprite_2 =
 
 short should_render_overlay = 1;
 
-// const float rgba[4][4] = 
-// {
-//     0.f, 0.f, 0.f, 0.5f,
-//     1.f, 0.f, 0.f, 0.5f,
-//     0.f, 1.f, 0.f, 0.5f,
-//     0.f, 0.f, 1.f, 0.5f
-// };
-
-const float rgba[4][4] = 
+float rgba[4][4] = 
 {
-    0.f, 0.f, 0.f, .75f,
-    1.f, 0.f, 0.f, .75f,
-    0.f, 1.f, 0.f, .75f,
-    0.f, 0.f, 1.f, .75f
+    {0.f, 0.f, 0.f, .75f},
+    {1.f, 0.f, 0.f, .75f},
+    {0.f, 1.f, 0.f, .75f},
+    {0.f, 0.f, 1.f, .75f}
 };
+
+static inline float clampf(float a, float min, float max)
+{
+    if(a > max)
+        return max;
+    if(a < min)
+        return min;
+    return a;
+}
 
 void render_overlay()
 {
+    rgba[0][0] = clampf(sinf(_ticks), 0.f, 1.f);
+
+    rgba[1][0] = clampf(sinf(_ticks), 0.f, 1.f);
+
+    rgba[2][0] = clampf(sinf(_ticks), 0.f, 1.f);
+
+    rgba[3][0] = clampf(sinf(_ticks), 0.f, 1.f);
+
     // Vita_DrawRect4xColor(40, 40, DISPLAY_WIDTH_DEF - 40, DISPLAY_HEIGHT_DEF - 40, rgba[0], rgba[1], rgba[2], rgba[3]);
     Vita_DrawRect4xColor(10, 10, DISPLAY_WIDTH_DEF - 20, DISPLAY_HEIGHT_DEF - 20, rgba[0], rgba[1], rgba[2], rgba[3]);
 }
 
-
 int main()
 {
     init_debug();
-    // bm_test();
-    //assert(sizeof(uint32_t) == sizeof(float));
-    //printf("sizeof(void*) = %lu\n\tsizeof(float) = %lu\n", sizeof(void*), sizeof(float));
+    test_print_texture_path();
 
     initGL(debugPrintf);
 
@@ -300,6 +455,11 @@ int main()
     
     initGLAdv();
 
+    init_texture_test_entities();
+    test_load_test_textures();
+    assign_texIDs_texture_test_entities();
+    
+
 
 #ifndef VITA
 
@@ -319,15 +479,8 @@ int main()
             return -1;
         }
     }
+
 #endif
-
-
-
-
-
-
-
-
     void* tex_buffer = malloc(8);
     int channels = 0;
 
@@ -344,6 +497,8 @@ int main()
     else free(tex_buffer);
 
     init_entities();
+
+    Vita_SetClearColor(.3f, .8f, .1f, 1.f);
     
 
     int run = 1;
@@ -370,7 +525,7 @@ int main()
             1.f, 0.f, 0.f, 1.0f,
             &test_data_1 // sin((_ticks * .2f)) * 360.f (rotation)
         );
-
+        
         float _scale_w = sin(_ticks) * (64.f * 2);
         float _scale_h = cos(_ticks) * (128.f * 2);
         float _half_w = _scale_w * .5f;
@@ -381,6 +536,7 @@ int main()
 
         test_sprite_1.rot_z = sin((_ticks * .2f)) * 360.f;
 
+        /*
         Vita_DrawTextureAnimColorExData(
             (DISPLAY_WIDTH_DEF / 2) - _half_w, // screen x
             (DISPLAY_HEIGHT_DEF / 2) - _half_h, // screen y
@@ -400,10 +556,17 @@ int main()
             1.f, 1.f, 1.f, 1.f, // Color
             &test_sprite_2 // sin((_ticks * .2f)) * 360.f // Rot.
         ); 
+        */
+
+        // draw_texture_test_entities();
 
         render_entities();
 
         render_overlay();
+
+        draw_texture_test_entities();
+
+        
         
 
         // Vita_DrawRectColorRot(0, 0, 9.5f, 9.5f, 0.f, 1.f, 0.f, 0.2f, 1.0f);

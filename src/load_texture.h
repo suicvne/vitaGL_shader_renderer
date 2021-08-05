@@ -86,7 +86,7 @@ static inline int Vita_LoadTextureBuffer(const char* path,
     uc = stbi_load(path, w, h, channels, STBI_rgb_alpha);
     
     size_t newSize = ((*w) * (*h) * (*channels));
-    debugPrintf("[Vita_LoadTexture] src size:%d --- Reallocating buffer from size %d to %d\n", sizeof(uc), sizeof(void*), newSize);
+    debugPrintf("[Vita_LoadTexture] src size:%d --- Reallocating buffer from size %d to %d (img size: %d x %d)\n", sizeof(uc), sizeof(void*), newSize, *w, *h);
 
     *buffer = realloc(*buffer, newSize);
     memcpy(*buffer, uc, newSize);
