@@ -59,14 +59,20 @@ static inline GLuint Vita_LoadTextureGL(void* buffer,
 
     glBindTexture(GL_TEXTURE_2D, returnValue);
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
 
     glTexImage2D(GL_TEXTURE_2D, 0, 
                     GL_RGBA, 
                     width, height, 
                     0, 
                     GL_RGBA, GL_UNSIGNED_BYTE, (const GLvoid*)(buffer));
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    
+    debugPrintf("Wrap: GL_CLAMP_TO_BORDER\n");
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
 
     debugPrintf("[load_texture] OK! GLuint: %u\n", returnValue);
     return returnValue;
@@ -83,13 +89,13 @@ static inline int Vita_LoadTextureBuffer(const char* path,
     stbi_set_flip_vertically_on_load(0);
 
     stbi_uc* uc = NULL;
-    uc = stbi_load(path, w, h, channels, STBI_rgb_alpha);
+    *buffer = stbi_load(path, w, h, channels, STBI_rgb_alpha);
     
     size_t newSize = ((*w) * (*h) * (*channels));
     debugPrintf("[Vita_LoadTexture] src size:%d --- Reallocating buffer from size %d to %d (img size: %d x %d)\n", sizeof(uc), sizeof(void*), newSize, *w, *h);
 
-    *buffer = realloc(*buffer, newSize);
-    memcpy(*buffer, uc, newSize);
+    // *buffer = realloc(*buffer, newSize);
+    // memcpy(*buffer, uc, newSize);
     if(*buffer == 0)
     {
         debugPrintf("Vita_LoadTexture failed: returned buffer is 0 (returned buffer is at %x)\n", (*buffer));

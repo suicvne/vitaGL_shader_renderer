@@ -207,8 +207,9 @@ int test_print_texture_path()
 
 int test_load_test_textures()
 {
-    char buffer[128];
-    void* tex_buffer = malloc(8);
+    char buffer[2048];
+    const int buffer_size = 2048;
+    void* tex_buffer;
     int channels = 0, w = 0, h = 0;
 
     // Vita_LoadTextureBuffer(_texture_1_path, &tex_buffer, &_tex_1_w, &_tex_1_h, &channels, (void*)debugPrintf);
@@ -216,22 +217,17 @@ int test_load_test_textures()
     for(int i = 0; i < _textures_size; i++)
     {
         // glGenTextures(1, &(_textures_gl[i]));
-        snprintf(buffer, 128, "%s%s", _path_prefix, _textures[i]);
+        snprintf(buffer, buffer_size, "%s%s", _path_prefix, _textures[i]);
         Vita_LoadTextureBuffer(buffer, &tex_buffer, &w, &h, &channels, (void *)debugPrintf);
 
         _textures_gl[i] = Vita_LoadTextureGL(tex_buffer, w, h, (void*)debugPrintf);
-
-        // glBindTexture(GL_TEXTURE_2D, _textures_gl[i]);
-        // CHECK_GL_ERROR((char *)"test_load_test_textures bind");
-        // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex_buffer);
-        // CHECK_GL_ERROR((char *)"test_load_test_textures upload");
 
         if(_test_texture_entities[i].ex_data != NULL)
         {
             _test_texture_entities[i].tex_w = (float)w;
             _test_texture_entities[i].tex_h = (float)h;
             _test_texture_entities[i].ex_data->textureID = _textures_gl[i];
-
+#ifdef DEBUG_BUILD
             debugPrintf(
                 "Setting tex data to: ID: %u; size: (%.1f x %.1f). size returned: (%d x %d)\n\n\n", 
                 _test_texture_entities[i].ex_data->textureID,
@@ -239,14 +235,17 @@ int test_load_test_textures()
                 _test_texture_entities[i].tex_h,
                 w, h
             );
+#endif
         }
+#ifdef DEBUG_BUILD
         else debugPrintf("WARNING: _test_texture_entities at %d dosn't have ex_data.\n");
-
-        memset(buffer, 0, 128);
+#endif
+        memset(buffer, 0, buffer_size);
         
     }
 
-    free(tex_buffer);
+    if(tex_buffer != NULL)
+        free(tex_buffer);
     
     glBindTexture(GL_TEXTURE_2D, 0);
 
@@ -297,6 +296,8 @@ static obj_extra_data test_sprite_3 =
 
 int draw_texture_test_entities()
 {
+    float n_src_x, n_src_x2, n_src_y, n_src_y2;
+
     for(int i = 0; i < 11; i++)
     {
         _entity e = _test_texture_entities[i];
@@ -305,17 +306,21 @@ int draw_texture_test_entities()
         
         // debugPrintf("Tex ID: %d Tex Size: %.2f x %.2f\n", e_d.textureID, e.tex_w, e.tex_h);
 
-        if(i == 4)
+        // if(i == 4)
+        // {
+        //     for(int x = 0; x < 300; x++)
+        //     {
+        //         Vita_DrawTextureAnimColorExData(x * 32.f, (x % 600) + (sinf(_ticks) * 64.f), 32.f, 32.f, e.ex_data->textureID,
+        //             e.tex_w, e.tex_h, 0, 0, 32.f, 32.f, 1.f, 1.f, 1.f, 1.f, e.ex_data);
+        //     }
+        //     continue;   
+        // }
+        if(i == 2)
         {
-            for(int x = 0; x < 300; x++)
-            {
-                Vita_DrawTextureAnimColorExData(x * 32.f, (x % 600) + (sinf(_ticks) * 64.f), 32.f, 32.f, e.ex_data->textureID,
-                    e.tex_w, e.tex_h, 0, 0, 32.f, 32.f, 1.f, 1.f, 1.f, 1.f, e.ex_data);
-            }
-            continue;   
+
+            Vita_DrawTextureAnimColorExData(e.x, e.y, e.w, e.h, 
+                e.ex_data->textureID, 1008.f, 500.f, 0.f, 0.f, 1008.f, 500.f, 1.f, 1.f, 1.f, 1.f, e.ex_data);
         }
-        Vita_DrawTextureAnimColorExData(e.x, e.y, e.w, e.h, 
-            e.ex_data->textureID, e.tex_w, e.tex_h, 0.f, 0.f, e.tex_w, e.tex_h, 1.f, 1.f, 1.f, 1.f, e.ex_data);    
     }
 }
 
