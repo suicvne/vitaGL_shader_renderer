@@ -8,7 +8,7 @@ typedef struct _vert
     float _r, _g, _b, _a;
 
     void *obj_ptr;
-} vert;
+} __attribute__ ((packed)) vert;
 
 typedef struct _obj_extra_data 
 {
