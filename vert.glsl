@@ -1,4 +1,4 @@
-attribute vec2 vPosition;
+attribute vec3 vPosition;
 attribute vec2 vTexCoord;
 attribute vec4 vColor;
 varying vec4 fragColor;
@@ -10,7 +10,7 @@ uniform mat4 _scale;
 
 void main()
 {
-    gl_Position = mvp * _rot * _scale * vec4(vPosition.xy, 0, 1);
+    gl_Position = mvp * _rot * _scale * vec4(vPosition.xyz, 1);
     fragColor = vColor;
     texCoord = vTexCoord;
 }

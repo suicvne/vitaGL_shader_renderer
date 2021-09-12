@@ -13,6 +13,8 @@ extern "C" {
 #define nullptr 0
 #endif
 
+// #define EXPERIMENTAL_SORTING
+
 #ifndef VITA
 static GLFWwindow* _game_window;
 #endif
@@ -62,6 +64,7 @@ static char __vgl_repaint_inprog = 0;
 
 static DrawCall *_curBufferA;
 static DrawCall *_curBufferB;
+// static uint8_t *_drawTypes;
 
 // Current read buffer
 static DrawCall *_vgl_pending_calls; 
@@ -139,21 +142,21 @@ mat4 _scale_arb;
 
 // ------------------------------------------   INTERNAL FUNCTIONS
 
-/*
+
 static inline int _Vita_SortDrawCalls(const void *s1, const void *s2)
 {
     DrawCall *dc1 = (DrawCall *)s1;
     DrawCall *dc2 = (DrawCall *)s2;
 
-    if(dc1->verts[0].obj_ptr != NULL 
-        && dc2->verts[0].obj_ptr != NULL)
+    if(dc1->draw.verts_quad[0].obj_ptr != NULL 
+        && dc2->draw.verts_quad[0].obj_ptr != NULL)
     {
-        return (((obj_extra_data *)dc1->verts[0].obj_ptr)->textureID) - (((obj_extra_data *)dc2->verts[0].obj_ptr)->textureID);
+        return (((obj_extra_data *)dc1->draw.verts_quad[0].obj_ptr)->textureID) - (((obj_extra_data *)dc2->draw.verts_quad[0].obj_ptr)->textureID);
     }
 
     return +1;
 }
-*/
+
 
 /**
  * Vita_AddPass():
@@ -247,24 +250,29 @@ _Vita_WriteVertices4xColor(DrawCall *drawCall,
 {
     if(drawCall == nullptr) return;
 
+    float _z = (MAX_VERTICES - _DrawCalls) / (float)MAX_VERTICES;
     // drawCall->draw_type = GL_TRIANGLE_STRIP;
     drawCall->draw.verts_quad[0].x = x;
     drawCall->draw.verts_quad[0].y = y;
+    drawCall->draw.verts_quad[0].z = _z;
     drawCall->draw.verts_quad[0].s = n_src_x; // Tex Coord X
     drawCall->draw.verts_quad[0].v = n_src_y; // Tex Coord Y
 
     drawCall->draw.verts_quad[1].x = x;
     drawCall->draw.verts_quad[1].y = y + hDst;
+    drawCall->draw.verts_quad[1].z = _z;
     drawCall->draw.verts_quad[1].s = n_src_x;  // Tex Coord X
     drawCall->draw.verts_quad[1].v = n_src_y2; // Tex Coord Y
 
     drawCall->draw.verts_quad[2].x = x + wDst;
     drawCall->draw.verts_quad[2].y = y;
+    drawCall->draw.verts_quad[2].z = _z;
     drawCall->draw.verts_quad[2].s = n_src_x2; // Tex Coord X
     drawCall->draw.verts_quad[2].v = n_src_y;  // Tex Coord Y
 
     drawCall->draw.verts_quad[3].x = x + wDst;
     drawCall->draw.verts_quad[3].y = y + hDst;
+    drawCall->draw.verts_quad[3].z = _z;
     drawCall->draw.verts_quad[3].s = n_src_x2; // Tex Coord X
     drawCall->draw.verts_quad[3].v = n_src_y2; // Tex Coord Y
 
@@ -393,6 +401,7 @@ void Vita_DrawRect4xColor(float x, float y,
                           float rgba3[4])
 {
     DrawCall *_curDrawCall = _Vita_GetAvailableDrawCall();
+    // _drawTypes[_DrawCalls] = GL_TRIANGLE_STRIP;
     // _curDrawCall->draw_type = GL_TRIANGLE_STRIP;
 
     for(int i = 0; i < 4; i++)
@@ -434,7 +443,7 @@ void Vita_DrawRectColorExData(float x, float y,
 {
     float rgba0[4] = {_r, _g, _b, _a};
     DrawCall *_curDrawCall = _Vita_GetAvailableDrawCall();
-    // _curDrawCall->draw_type = GL_TRIANGLE_STRIP;
+    // _drawTypes[_DrawCalls] = GL_TRIANGLE_STRIP;
 
     if(ex_data != NULL)
         ex_data->textureID = 0;
@@ -471,7 +480,7 @@ void Vita_Draw(float x,
 {
     
     DrawCall *_curDrawCall = _Vita_GetAvailableDrawCall();
-    // _curDrawCall->draw_type = GL_TRIANGLE_STRIP;
+    // _drawTypes[_DrawCalls] = GL_TRIANGLE_STRIP;
     
     for(int i = 0; i < VERTICES_PER_QUAD; i++)
         _curDrawCall->draw.verts_quad[i].obj_ptr = NULL;
@@ -517,7 +526,7 @@ void Vita_DrawTextureAnimColorExData(
 {
 
     DrawCall *_curDrawCall = _Vita_GetAvailableDrawCall();
-    // _curDrawCall->draw_type = GL_TRIANGLE_STRIP;
+    // _drawTypes[_DrawCalls] = GL_TRIANGLE_STRIP;
 
     if(_curDrawCall == NULL)
     { 
@@ -844,9 +853,11 @@ int initGLAdv()
 
     _curBufferA = (DrawCall*)malloc(_vgl_pending_total_size);
     _curBufferB = (DrawCall*)malloc(_vgl_pending_total_size);
+    // _drawTypes = (uint8_t*)malloc(sizeof(uint8_t) * MAX_VERTICES);
 
     memset(_curBufferA, 0, _vgl_pending_total_size);
     memset(_curBufferB, 0, _vgl_pending_total_size);
+    // memset(_drawTypes, 0, sizeof(uint8_t) * MAX_VERTICES);
 
     _vgl_pending_calls = _curBufferA;
     _vgl_current_write_buffer = _curBufferB;
@@ -984,6 +995,10 @@ int initGL(void (*dbgPrintFn)(const char*, ...))
 
     glEnable(GL_TEXTURE_2D);
     glEnable(GL_BLEND);
+    glEnable(GL_DEPTH_TEST);
+    // glDepthFunc(GL_NOTEQUAL);
+    // glDepthMask(GL_FALSE);
+
     glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     glm_mat4_identity(cpu_mvp);
@@ -1017,7 +1032,7 @@ void Vita_SetClearColor(float r, float g, float b, float a)
  */
 void Vita_Clear()
 {
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     Vita_ResetTotalCalls();
 }
 
@@ -1050,6 +1065,9 @@ void Vita_Repaint()
 
     // Get pointer to the first pending drawcall.
     struct _DrawCall *calls = Vita_GetDrawCallsPending();
+#ifdef EXPERIMENTAL_SORTING
+    qsort(calls, draw_calls, sizeof(DrawCall), _Vita_SortDrawCalls);
+#endif
     GLuint _vbo = Vita_GetVertexBufferID(); // Get OpenGL handle to our vbo. (On the GPU)
     
     // Buffer Data.
@@ -1074,13 +1092,13 @@ void Vita_Repaint()
 
     CHECK_GL_ERROR("enable vertex attrib array 0");
 
-    glVertexAttribPointer(VERTEX_POS_INDEX, 2, GL_FLOAT, GL_FALSE, stride, (void*)0); // Binding the data from the vbo to our vertex attrib.
+    glVertexAttribPointer(VERTEX_POS_INDEX, 3, GL_FLOAT, GL_FALSE, stride, (void*)0); // Binding the data from the vbo to our vertex attrib.
     CHECK_GL_ERROR("vert attrib ptr arrays");
 
-    glVertexAttribPointer(VERTEX_TEXCOORD_INDEX, 2, GL_FLOAT, GL_FALSE, stride, (void*)(0 + (2 * sizeof(float))));
+    glVertexAttribPointer(VERTEX_TEXCOORD_INDEX, 2, GL_FLOAT, GL_FALSE, stride, (void*)(0 + (3 * sizeof(float))));
     CHECK_GL_ERROR("vert attrib ptr tex coord.");
 
-    glVertexAttribPointer(VERTEX_COLOR_INDEX, 4, GL_FLOAT, GL_FALSE, stride, (void*)(0 + (4 * sizeof(float))));
+    glVertexAttribPointer(VERTEX_COLOR_INDEX, 4, GL_FLOAT, GL_FALSE, stride, (void*)(0 + (5 * sizeof(float))));
     CHECK_GL_ERROR("vert attrib ptr color");
 
     glUniformMatrix4fv(VERTEX_MVP_INDEX, 1, GL_FALSE, (const GLfloat*)cpu_mvp);
@@ -1100,19 +1118,22 @@ void Vita_Repaint()
     glUniformMatrix4fv(UNIFORM_SCALE_INDEX, 1, GL_FALSE, (const GLfloat *)_scale_arb);
     glUniformMatrix4fv(UNIFORM_ROTMAT_INDEX, 1, GL_FALSE, (const GLfloat *)_rot_arb);
 
-    int thisBatchStart = 0;
-    int thisBatch = 0;
-
     glUniform1i(UNIFORM_USE_TEXTURE_BOOL_INDEX, 0);
     glBindTexture(GL_TEXTURE_2D, 0);
-
+#ifdef EXPERIMENTAL_SORTING
+    int thisBatchStart = 0;
+    int thisBatch = 0;
+    int _totalThisBatch = 0;
+    int _totalBatches = 0;
+#endif
     for (i = 0; i < draw_calls; i++)
     {
         _curDrawCall = *(calls + i);
-        // if (_curDrawCall.draw_type == 0)
-        //     continue;
-        // else if (_curDrawCall.draw_type == GL_TRIANGLE_STRIP) // quads
+        // if(_drawTypes[i] == GL_TRIANGLE_STRIP)
         {
+#ifdef EXPERIMENTAL_SORTING
+            _totalThisBatch += VERTICES_PER_QUAD;
+#endif
             if (_curDrawCall.draw.verts_quad[0].obj_ptr != NULL)
             {
                 obj_extra_data ex_data = *((obj_extra_data *)_curDrawCall.draw.verts_quad[0].obj_ptr);
@@ -1130,6 +1151,14 @@ void Vita_Repaint()
                     glBindTexture(GL_TEXTURE_2D, ex_data.textureID);
                     _curBoundTex = ex_data.textureID;
                     totalTextureSwaps++;
+
+                    // draw
+#ifdef EXPERIMENTAL_SORTING
+                    _debugPrintf("Batch %d: Total Vertices: %d\n", _totalBatches, _totalThisBatch);
+                    glDrawArrays(GL_TRIANGLE_STRIP, (i * VERTICES_PER_QUAD), _totalThisBatch);              
+                    _totalThisBatch = 0;
+                    _totalBatches++;
+#endif
                 }
 
                 // TODO: Add back all the extra shader options
@@ -1140,11 +1169,20 @@ void Vita_Repaint()
                 glUniform1i(UNIFORM_USE_TEXTURE_BOOL_INDEX, 0);
                 glBindTexture(GL_TEXTURE_2D, 0);
                 _curBoundTex = 0;
+
+#ifdef EXPERIMENTAL_SORTING
+                _debugPrintf("Batch %d: Total Vertices: %d\n", _totalBatches, _totalThisBatch);
+                glDrawArrays(GL_TRIANGLE_STRIP, (i * VERTICES_PER_QUAD), _totalThisBatch);
+
+                _totalThisBatch = 0;
+                _totalBatches++;
+#endif
+
                 totalTextureSwaps++;
             }
-
-            // draw
+#ifndef EXPERIMENTAL_SORTING
             glDrawArrays(GL_TRIANGLE_STRIP, (i * VERTICES_PER_QUAD), VERTICES_PER_QUAD);
+#endif            
         }
     }
 #if DEBUG_BUILD

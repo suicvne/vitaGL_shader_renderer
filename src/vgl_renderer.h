@@ -29,6 +29,7 @@ extern "C" {
 #include <string.h>
 #include <time.h>
 
+#define VERTICES_PER_TRIQUAD 6
 #define VERTICES_PER_QUAD 4
 #define VERTICES_PER_TRI 3
 // #define VERTICES_PER_PRIM VERTICES_PER_QUAD
@@ -44,7 +45,7 @@ extern "C" {
 // How many components are in the _vert.
 // for just x & y, it's 2. this is used for stride.
 // In this case, we have (x, y) (s, v) and (r,g,b,a) available to us.
-#define VERTEX_ATTR_ELEM_COUNT 8
+#define VERTEX_ATTR_ELEM_COUNT 9
 #define MAX_VERTICES 8096 // TODO: This should be renamed to MAX_DRAWCALLS. We allocate our VBO with memory to fill MAX_VERTICES * sizeof(DrawCall)
 
 #define VERTEX_ATTRIB_TOTAL_SIZE_1 (VERTEX_ATTR_ELEM_COUNT * sizeof(float)) + (sizeof(void *))

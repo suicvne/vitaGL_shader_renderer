@@ -447,7 +447,7 @@ void render_overlay()
 
     rgba[2][0] = clampf(sinf(_ticks), 0.f, 1.f);
 
-    rgba[3][0] = clampf(sinf(_ticks), 0.f, 1.f);
+    rgba[3][0] = clampf(sinf(_ticks), 0.f, .5f);
 
     RectF normalized_coords = 
         PixelSpaceToGLSpace(10, 10, DISPLAY_WIDTH_DEF - 20, DISPLAY_HEIGHT_DEF - 20, DISPLAY_WIDTH_DEF, DISPLAY_HEIGHT_DEF);

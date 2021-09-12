@@ -1,5 +1,5 @@
 void main(
-    float2 aPosition,
+    float3 aPosition,
     float2 vTexCoord,
     float4 vColor,
     uniform float4x4 mvp,

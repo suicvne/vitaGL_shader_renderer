@@ -3,7 +3,7 @@
 
 typedef struct _vert 
 {
-    float x, y;
+    float x, y, z;
     float s, v; // Tex Coord X, Tex Coord Y
     float _r, _g, _b, _a;
 
