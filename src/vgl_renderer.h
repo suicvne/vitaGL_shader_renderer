@@ -31,7 +31,7 @@ extern "C" {
 
 #define VERTICES_PER_QUAD 4
 #define VERTICES_PER_TRI 3
-#define VERTICES_PER_PRIM VERTICES_PER_QUAD
+// #define VERTICES_PER_PRIM VERTICES_PER_QUAD
 
 #define VERTEX_POS_SIZE 2 // Number of elements in our position (2: (x, y))
 #define VERTEX_TEXCOORD_SIZE 2 // Number of elements in our tex coords. (2: (s, v))

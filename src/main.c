@@ -463,6 +463,8 @@ void render_overlay()
 
 int main()
 {
+
+
     init_debug();
     test_print_texture_path();
 
@@ -570,8 +572,6 @@ int main()
             normalized_cache.bottom - normalized_cache.top, 
             0.f, 0.f, 0.f, 1.f
         );
-
-        
 
         normalized_cache = 
             PixelSpaceToGLSpace(

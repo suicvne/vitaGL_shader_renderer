@@ -139,6 +139,7 @@ mat4 _scale_arb;
 
 // ------------------------------------------   INTERNAL FUNCTIONS
 
+/*
 static inline int _Vita_SortDrawCalls(const void *s1, const void *s2)
 {
     DrawCall *dc1 = (DrawCall *)s1;
@@ -152,6 +153,7 @@ static inline int _Vita_SortDrawCalls(const void *s1, const void *s2)
 
     return +1;
 }
+*/
 
 /**
  * Vita_AddPass():
@@ -245,45 +247,46 @@ _Vita_WriteVertices4xColor(DrawCall *drawCall,
 {
     if(drawCall == nullptr) return;
 
-    drawCall->verts[0].x = x;
-    drawCall->verts[0].y = y;
-    drawCall->verts[0].s = n_src_x; // Tex Coord X
-    drawCall->verts[0].v = n_src_y; // Tex Coord Y
-    
-    drawCall->verts[1].x = x;
-    drawCall->verts[1].y = y + hDst;
-    drawCall->verts[1].s = n_src_x; // Tex Coord X
-    drawCall->verts[1].v = n_src_y2; // Tex Coord Y
-    
-    drawCall->verts[2].x = x + wDst;
-    drawCall->verts[2].y = y;
-    drawCall->verts[2].s = n_src_x2; // Tex Coord X
-    drawCall->verts[2].v = n_src_y; // Tex Coord Y
+    // drawCall->draw_type = GL_TRIANGLE_STRIP;
+    drawCall->draw.verts_quad[0].x = x;
+    drawCall->draw.verts_quad[0].y = y;
+    drawCall->draw.verts_quad[0].s = n_src_x; // Tex Coord X
+    drawCall->draw.verts_quad[0].v = n_src_y; // Tex Coord Y
 
-    drawCall->verts[3].x = x + wDst;
-    drawCall->verts[3].y = y + hDst;
-    drawCall->verts[3].s = n_src_x2; // Tex Coord X
-    drawCall->verts[3].v = n_src_y2; // Tex Coord Y
+    drawCall->draw.verts_quad[1].x = x;
+    drawCall->draw.verts_quad[1].y = y + hDst;
+    drawCall->draw.verts_quad[1].s = n_src_x;  // Tex Coord X
+    drawCall->draw.verts_quad[1].v = n_src_y2; // Tex Coord Y
 
-    drawCall->verts[0]._r = rgba0[0];
-    drawCall->verts[0]._g = rgba0[1];
-    drawCall->verts[0]._b = rgba0[2];
-    drawCall->verts[0]._a = rgba0[3];
+    drawCall->draw.verts_quad[2].x = x + wDst;
+    drawCall->draw.verts_quad[2].y = y;
+    drawCall->draw.verts_quad[2].s = n_src_x2; // Tex Coord X
+    drawCall->draw.verts_quad[2].v = n_src_y;  // Tex Coord Y
 
-    drawCall->verts[1]._r = rgba1[0];
-    drawCall->verts[1]._g = rgba1[1];
-    drawCall->verts[1]._b = rgba1[2];
-    drawCall->verts[1]._a = rgba1[3];
+    drawCall->draw.verts_quad[3].x = x + wDst;
+    drawCall->draw.verts_quad[3].y = y + hDst;
+    drawCall->draw.verts_quad[3].s = n_src_x2; // Tex Coord X
+    drawCall->draw.verts_quad[3].v = n_src_y2; // Tex Coord Y
 
-    drawCall->verts[2]._r = rgba2[0];
-    drawCall->verts[2]._g = rgba2[1];
-    drawCall->verts[2]._b = rgba2[2];
-    drawCall->verts[2]._a = rgba2[3];
+    drawCall->draw.verts_quad[0]._r = rgba0[0];
+    drawCall->draw.verts_quad[0]._g = rgba0[1];
+    drawCall->draw.verts_quad[0]._b = rgba0[2];
+    drawCall->draw.verts_quad[0]._a = rgba0[3];
 
-    drawCall->verts[3]._r = rgba3[0];
-    drawCall->verts[3]._g = rgba3[1];
-    drawCall->verts[3]._b = rgba3[2];
-    drawCall->verts[3]._a = rgba3[3];
+    drawCall->draw.verts_quad[1]._r = rgba1[0];
+    drawCall->draw.verts_quad[1]._g = rgba1[1];
+    drawCall->draw.verts_quad[1]._b = rgba1[2];
+    drawCall->draw.verts_quad[1]._a = rgba1[3];
+
+    drawCall->draw.verts_quad[2]._r = rgba2[0];
+    drawCall->draw.verts_quad[2]._g = rgba2[1];
+    drawCall->draw.verts_quad[2]._b = rgba2[2];
+    drawCall->draw.verts_quad[2]._a = rgba2[3];
+
+    drawCall->draw.verts_quad[3]._r = rgba3[0];
+    drawCall->draw.verts_quad[3]._g = rgba3[1];
+    drawCall->draw.verts_quad[3]._b = rgba3[2];
+    drawCall->draw.verts_quad[3]._a = rgba3[3];
 }
 
 /**
@@ -390,9 +393,10 @@ void Vita_DrawRect4xColor(float x, float y,
                           float rgba3[4])
 {
     DrawCall *_curDrawCall = _Vita_GetAvailableDrawCall();
+    // _curDrawCall->draw_type = GL_TRIANGLE_STRIP;
 
     for(int i = 0; i < 4; i++)
-        _curDrawCall->verts[i].obj_ptr = 0;
+        _curDrawCall->draw.verts_quad[i].obj_ptr = 0;
 
     _Vita_WriteVertices4xColor(_curDrawCall, x, y, wDst, hDst, 0.f, 1.f, 0.f, 1.f, rgba0, rgba1, rgba2, rgba3);
 
@@ -430,14 +434,15 @@ void Vita_DrawRectColorExData(float x, float y,
 {
     float rgba0[4] = {_r, _g, _b, _a};
     DrawCall *_curDrawCall = _Vita_GetAvailableDrawCall();
+    // _curDrawCall->draw_type = GL_TRIANGLE_STRIP;
 
     if(ex_data != NULL)
         ex_data->textureID = 0;
 
-    _curDrawCall->verts[0].obj_ptr = ex_data;
-    _curDrawCall->verts[1].obj_ptr = ex_data;
-    _curDrawCall->verts[2].obj_ptr = ex_data;
-    _curDrawCall->verts[3].obj_ptr = ex_data;
+    _curDrawCall->draw.verts_quad[0].obj_ptr = ex_data;
+    _curDrawCall->draw.verts_quad[1].obj_ptr = ex_data;
+    _curDrawCall->draw.verts_quad[2].obj_ptr = ex_data;
+    _curDrawCall->draw.verts_quad[3].obj_ptr = ex_data;
 
 
     // _curDrawCall->scale = 1.0f;
@@ -466,9 +471,10 @@ void Vita_Draw(float x,
 {
     
     DrawCall *_curDrawCall = _Vita_GetAvailableDrawCall();
+    // _curDrawCall->draw_type = GL_TRIANGLE_STRIP;
     
-    for(int i = 0; i < VERTICES_PER_PRIM; i++)
-        _curDrawCall->verts[i].obj_ptr = NULL;
+    for(int i = 0; i < VERTICES_PER_QUAD; i++)
+        _curDrawCall->draw.verts_quad[i].obj_ptr = NULL;
 #if 0
     _curDrawCall->scale = 1.0f;
 #endif
@@ -511,6 +517,8 @@ void Vita_DrawTextureAnimColorExData(
 {
 
     DrawCall *_curDrawCall = _Vita_GetAvailableDrawCall();
+    // _curDrawCall->draw_type = GL_TRIANGLE_STRIP;
+
     if(_curDrawCall == NULL)
     { 
         _debugPrintf("WARNING: Got null draw call.\n");
@@ -524,8 +532,8 @@ void Vita_DrawTextureAnimColorExData(
             ex_data->textureID = texId;
     }
 
-    for(int i = 0; i < VERTICES_PER_PRIM; i++)
-        _curDrawCall->verts[i].obj_ptr = (void*)ex_data;
+    for(int i = 0; i < VERTICES_PER_QUAD; i++)
+        _curDrawCall->draw.verts_quad[i].obj_ptr = (void*)ex_data;
     
 #if 0
     _curDrawCall->piv_x = x + (wDst * .5f);
@@ -948,7 +956,7 @@ int initGL(void (*dbgPrintFn)(const char*, ...))
                            SCE_GXM_MULTISAMPLE_NONE);
     _userHasLibshaccg();
 #endif
-#ifndef VITA
+#ifndef VITA // TODO: elif for glew? restructure the *way* this is done? per platform private impl of init functions?
     glewExperimental = 1;
     glfwSetErrorCallback(&glfwError);
     int glfwReturnVal = glfwInit();
@@ -962,8 +970,6 @@ int initGL(void (*dbgPrintFn)(const char*, ...))
     _game_window = glfwCreateWindow(960,544,"Test", 0, 0);
     _debugPrintf("Window Pointer: %p\n", _game_window);
     glfwMakeContextCurrent(_game_window);
-
-    
 
     int glewReturnVal = glewInit();
     if(glewReturnVal != GLEW_OK)
@@ -1052,7 +1058,7 @@ void Vita_Repaint()
         glBindBuffer(GL_ARRAY_BUFFER, _vbo); // Bind our vbo through OpenGL.
         CHECK_GL_ERROR("bind");
 
-        glBufferData(GL_ARRAY_BUFFER, draw_calls * sizeof(DrawCall), calls, GL_DYNAMIC_DRAW);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, draw_calls * sizeof(DrawCall), calls);
     }
     else return;
 
@@ -1103,66 +1109,43 @@ void Vita_Repaint()
     for (i = 0; i < draw_calls; i++)
     {
         _curDrawCall = *(calls + i);
-
-        if(_curDrawCall.verts[0].obj_ptr != NULL)
+        // if (_curDrawCall.draw_type == 0)
+        //     continue;
+        // else if (_curDrawCall.draw_type == GL_TRIANGLE_STRIP) // quads
         {
-            obj_extra_data ex_data = *((obj_extra_data *)_curDrawCall.verts[0].obj_ptr);
-            _curReqTex = (_curDrawCall.verts[0].obj_ptr != NULL) ? ex_data.textureID : 0;
-
-            // Only re-bind texture when it's different
-            // from what's currently bound.
-            if (_curBoundTex != _curReqTex)
+            if (_curDrawCall.draw.verts_quad[0].obj_ptr != NULL)
             {
-                if (ex_data.textureID == 0)
-                    glUniform1i(UNIFORM_USE_TEXTURE_BOOL_INDEX, 0);
-                else
-                    glUniform1i(UNIFORM_USE_TEXTURE_BOOL_INDEX, 1);
+                obj_extra_data ex_data = *((obj_extra_data *)_curDrawCall.draw.verts_quad[0].obj_ptr);
+                _curReqTex = (_curDrawCall.draw.verts_quad[0].obj_ptr != NULL) ? ex_data.textureID : 0;
 
-                glBindTexture(GL_TEXTURE_2D, ex_data.textureID);
-                _curBoundTex = ex_data.textureID;
+                // Only re-bind texture when it's different
+                // from what's currently bound.
+                if (_curBoundTex != _curReqTex)
+                {
+                    if (ex_data.textureID == 0)
+                        glUniform1i(UNIFORM_USE_TEXTURE_BOOL_INDEX, 0);
+                    else
+                        glUniform1i(UNIFORM_USE_TEXTURE_BOOL_INDEX, 1);
+
+                    glBindTexture(GL_TEXTURE_2D, ex_data.textureID);
+                    _curBoundTex = ex_data.textureID;
+                    totalTextureSwaps++;
+                }
+
+                // TODO: Add back all the extra shader options
+                // Maybe as efficiently as possible?
+            }
+            else
+            {
+                glUniform1i(UNIFORM_USE_TEXTURE_BOOL_INDEX, 0);
+                glBindTexture(GL_TEXTURE_2D, 0);
+                _curBoundTex = 0;
                 totalTextureSwaps++;
             }
 
-            // TODO: Add offset to the basic shader.
-            // glm_translate(cpu_mvp, (vec3){curPass.offset_x, curPass.offset_y, 0.f});
-
-            /*
-            glm_mat4_identity(_rot_arb);
-            glm_rotate_atm(
-                _rot_arb,
-                (vec3){ex_data.piv_x, ex_data.piv_y, 0.f},
-                glm_rad(ex_data.rot_z),
-                (vec3){0.f, 0.f, 1.f});
-
-            vec3 refVector = {ex_data.piv_x, ex_data.piv_y, 0.f};
-            vec3 nRefVector = {-ex_data.piv_x, -ex_data.piv_y, 0.f};
-
-            mat4 transRefTo;
-            mat4 transRefFrom;
-            mat4 transfScale;
-            mat4 _temp1;
-            glm_mat4_identity(transRefTo);
-            glm_mat4_identity(transRefFrom);
-            glm_mat4_identity(transfScale);
-            glm_mat4_identity(_temp1);
-            glm_translate(transRefTo, nRefVector);
-            glm_translate(transRefFrom, refVector);
-
-            glm_scale(transfScale, (vec3){ex_data.scale, ex_data.scale, ex_data.scale});
-            glm_mat4_mul(transRefFrom, transfScale, _temp1);
-            glm_mat4_mul(_temp1, transRefTo, _scale_arb);
-            */
+            // draw
+            glDrawArrays(GL_TRIANGLE_STRIP, (i * VERTICES_PER_QUAD), VERTICES_PER_QUAD);
         }
-        else
-        {
-            glUniform1i(UNIFORM_USE_TEXTURE_BOOL_INDEX, 0);
-            glBindTexture(GL_TEXTURE_2D, 0);
-            _curBoundTex = 0;
-            totalTextureSwaps++;
-        }
-
-        // draw
-        glDrawArrays(GL_TRIANGLE_STRIP, i * VERTICES_PER_PRIM, VERTICES_PER_PRIM);
     }
 #if DEBUG_BUILD
     if(last_frame_time_s != 0)
