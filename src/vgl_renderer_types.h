@@ -32,7 +32,12 @@ typedef struct _shading_pass
 
 typedef struct _DrawCall
 {
-    struct _vert verts[4];
+    uint8_t draw_type;
+    union
+    {
+        struct _vert verts_quad[4];
+        struct _vert verts_tri[3];
+    }
 } __attribute__ ((packed)) DrawCall;
 
 #endif // __VGL_RENDERER_TYPES_H__

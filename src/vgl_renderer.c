@@ -886,6 +886,40 @@ static void glfwError(int id, const char* description)
 }
 #endif
 
+#ifdef VITA
+#include <psp2/kernel/clib.h>
+#include <psp2/io/stat.h>
+
+// as always rinne, thank you for this small code snippet
+// Checks to make sure the uer has the shader compiler installed.
+// If they don't, display a message and exit gracefully from the process.
+static int _userHasLibshaccg()
+{
+    SceCommonDialogConfigParam cmnDlgCfgParam;
+    sceCommonDialogConfigParamInit(&cmnDlgCfgParam);
+
+    SceIoStat st1, st2;
+    if (!(sceIoGetstat("ur0:/data/libshacccg.suprx", &st1) >= 0 || sceIoGetstat("ur0:/data/external/libshacccg.suprx", &st2) >= 0)) {
+        SceMsgDialogUserMessageParam msg_param;
+        sceClibMemset(&msg_param, 0, sizeof(SceMsgDialogUserMessageParam));
+        msg_param.buttonType = SCE_MSG_DIALOG_BUTTON_TYPE_OK;
+        msg_param.msg = (const SceChar8*)"Error: Runtime shader compiler (libshacccg.suprx) is not installed.";
+        _debugPrintf("\n\n\nError: Runtime shader compiler (libshacccg.suprx) is not installed.\n\n\n");
+        SceMsgDialogParam param;
+        sceMsgDialogParamInit(&param);
+        param.mode = SCE_MSG_DIALOG_MODE_USER_MSG;
+        param.userMsgParam = &msg_param;
+        sceMsgDialogInit(&param);
+        while (sceMsgDialogGetStatus() != SCE_COMMON_DIALOG_STATUS_FINISHED) {
+            vglSwapBuffers(GL_TRUE);
+        }
+        sceKernelExitProcess(0);
+    }
+
+    return 1; // TRUE
+}
+#endif
+
 int initGL(void (*dbgPrintFn)(const char*, ...))
 {
     if(dbgPrintFn == NULL)
@@ -905,11 +939,6 @@ int initGL(void (*dbgPrintFn)(const char*, ...))
     }
 
 #ifdef VITA
-    // vglInit(0);
-    //0x100000
-    int x = 0x4000000;
-    _debugPrintf("Initializing with threshold of %d\n", x);
-    // vglInitExtended(0, DISPLAY_WIDTH, DISPLAY_HEIGHT, x, SCE_GXM_MULTISAMPLE_NONE);
     vglInitWithCustomSizes(0, 
                            DISPLAY_WIDTH, 
                            DISPLAY_HEIGHT, 
@@ -917,6 +946,7 @@ int initGL(void (*dbgPrintFn)(const char*, ...))
                            8 * 1024 * 1024, 
                            4 * 1024 * 1024, 
                            SCE_GXM_MULTISAMPLE_NONE);
+    _userHasLibshaccg();
 #endif
 #ifndef VITA
     glewExperimental = 1;
@@ -950,27 +980,18 @@ int initGL(void (*dbgPrintFn)(const char*, ...))
     glEnable(GL_BLEND);
     glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    // glMatrixMode(GL_PROJECTION);
-    // glLoadIdentity();
-    // glOrtho(0, DISPLAY_WIDTH, DISPLAY_HEIGHT, 0, -1, 1);
-
-#ifdef __APPLE__
-    // TODO: Check for retina on Apple machines.
-    glm_ortho_lh_zo(0, DISPLAY_WIDTH, DISPLAY_HEIGHT, 0, -1, 1, cpu_mvp);
-#else
-    glm_ortho_lh_zo(0, DISPLAY_WIDTH, DISPLAY_HEIGHT, 0, -1, 1, cpu_mvp);
-#endif
+    glm_mat4_identity(cpu_mvp);
 
     // glMatrixMode(GL_MODELVIEW);
     // glLoadIdentity();
 
-    glViewport(
-        0,
-        -DISPLAY_HEIGHT,
-        DISPLAY_WIDTH * 2,
-        DISPLAY_HEIGHT * 2
-    );
+    int a = 0,
+        //b = -(DISPLAY_HEIGHT / 1),
+        b = 0,
+        c = DISPLAY_WIDTH,
+        d = DISPLAY_HEIGHT;
 
+    glViewport(a, b, c, d);
     return 0;
 }
 
@@ -1177,7 +1198,7 @@ FINISH_DRAWING:
 #if DEBUG_BUILD
     if(last_printf_time == 0)
         last_printf_time = clock();
-    if(clock() - last_printf_time > (2 * CLOCKS_PER_SEC))
+    if(clock() - last_printf_time > (6 * CLOCKS_PER_SEC))
     {
         last_printf_time = clock();
         _debugPrintf("Draw Calls: %d; Texture Swaps: %d; Frame Time Ticks: %lu (%.6f s, %.4f ms)\n", draw_calls, totalTextureSwaps, last_frame_time_consumed_s, ((float)clock() - (float)last_frame_time_s) / CLOCKS_PER_SEC, (((float)clock() - (float)last_frame_time_s) / CLOCKS_PER_SEC) * 1000.f);

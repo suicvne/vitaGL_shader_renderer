@@ -43,6 +43,30 @@ void debugPrintf(const char* path, ...)
 #endif
 }
 
+typedef struct RectF
+{
+    double left, right;
+    double top, bottom;
+} RectF;
+
+static inline RectF PixelSpaceToGLSpace(float x, float y, float w, float h, float screen_w, float screen_h)
+{
+    float screen_w_half = screen_w / 2;
+    float screen_h_half = screen_h / 2;
+
+    return 
+    (RectF)
+    {
+        // left
+        .left = (  (roundf(x) / screen_w_half) - 1.0f                       ),
+        // top
+        .top = (  ((screen_h - roundf(y)) / screen_h_half) - 1.0f          ),
+        // right
+        .right = (  (roundf(x + w) / screen_w_half) - 1.0f                   ),
+        // bottom
+        .bottom = (  ((screen_h - roundf(y + h)) / screen_h_half) - 1.0f          ),
+    };
+}
 
 const GLint _scr_offset_x = (DISPLAY_WIDTH_DEF);
 const GLint _scr_offset_y = (DISPLAY_HEIGHT_DEF);
@@ -141,6 +165,7 @@ void update_entities(float _ticks)
 
 void render_entities()
 {
+    /*
     for(int i = 0; i < ENTITY_COUNT; i++)
     {
         Vita_DrawTextureAnimColorExData(
@@ -155,6 +180,7 @@ void render_entities()
             _test_entities[i].ex_data
         );
     }
+    */
 }
 
 #ifdef VITA
@@ -297,6 +323,7 @@ static obj_extra_data test_sprite_3 =
 int draw_texture_test_entities()
 {
     float n_src_x, n_src_x2, n_src_y, n_src_y2;
+    RectF normalized_coords;
 
     for(int i = 0; i < 11; i++)
     {
@@ -317,9 +344,15 @@ int draw_texture_test_entities()
         // }
         if(i == 2)
         {
+            normalized_coords = PixelSpaceToGLSpace(e.x, e.y, e.w, e.h, DISPLAY_WIDTH_DEF, DISPLAY_HEIGHT_DEF);
 
-            Vita_DrawTextureAnimColorExData(e.x, e.y, e.w, e.h, 
-                e.ex_data->textureID, 1008.f, 500.f, 0.f, 0.f, 1008.f, 500.f, 1.f, 1.f, 1.f, 1.f, e.ex_data);
+            Vita_DrawTextureAnimColorExData(
+                normalized_coords.left, 
+                normalized_coords.top, 
+                normalized_coords.right - normalized_coords.left, 
+                normalized_coords.bottom - normalized_coords.top, 
+                e.ex_data->textureID, 1008.f, 500.f, 0.f, 0.f, 1008.f, 500.f, 1.f, 1.f, 1.f, 1.f, e.ex_data
+            );
         }
     }
 }
@@ -416,8 +449,16 @@ void render_overlay()
 
     rgba[3][0] = clampf(sinf(_ticks), 0.f, 1.f);
 
-    // Vita_DrawRect4xColor(40, 40, DISPLAY_WIDTH_DEF - 40, DISPLAY_HEIGHT_DEF - 40, rgba[0], rgba[1], rgba[2], rgba[3]);
-    Vita_DrawRect4xColor(10, 10, DISPLAY_WIDTH_DEF - 20, DISPLAY_HEIGHT_DEF - 20, rgba[0], rgba[1], rgba[2], rgba[3]);
+    RectF normalized_coords = 
+        PixelSpaceToGLSpace(10, 10, DISPLAY_WIDTH_DEF - 20, DISPLAY_HEIGHT_DEF - 20, DISPLAY_WIDTH_DEF, DISPLAY_HEIGHT_DEF);
+    
+    Vita_DrawRect4xColor(
+        normalized_coords.left, 
+        normalized_coords.top, 
+        normalized_coords.right - normalized_coords.left, 
+        normalized_coords.bottom - normalized_coords.top, 
+        rgba[0], rgba[1], rgba[2], rgba[3]
+    );
 }
 
 int main()
@@ -513,7 +554,44 @@ int main()
         // clear current vbo
         Vita_Clear();
 
-        Vita_DrawRectColor(fabs(cos(_ticks * .5f) * (300)) + 4, 4, 32, 32, .2f, .2f, .2f, .58f);
+
+        RectF normalized_cache = 
+            PixelSpaceToGLSpace(
+                fabs(cos(_ticks * .5f) * (300)) + 4, 
+                4, 
+                32, 
+                32, 
+                DISPLAY_WIDTH_DEF, DISPLAY_HEIGHT_DEF);
+
+        Vita_DrawRectColor(
+            normalized_cache.left, 
+            normalized_cache.top, 
+            normalized_cache.right - normalized_cache.left, 
+            normalized_cache.bottom - normalized_cache.top, 
+            0.f, 0.f, 0.f, 1.f
+        );
+
+        
+
+        normalized_cache = 
+            PixelSpaceToGLSpace(
+                0, 
+                0, 
+                128.f, 
+                128.f, 
+                DISPLAY_WIDTH_DEF, DISPLAY_HEIGHT_DEF
+            );
+        
+        Vita_DrawRectColor(
+            normalized_cache.left, 
+            normalized_cache.top, 
+            normalized_cache.right - normalized_cache.left, 
+            normalized_cache.bottom - normalized_cache.top, 
+            0.f, 0.f, 0.f, 1.f
+        );
+
+
+/*
         Vita_Draw(fabs(cos(_ticks * .5f) * (300 + 0)), 0, 32, 32);
 
         Vita_DrawRectColor(fabs(cos(_ticks * .5f) * (300 + 20)) + 4, 36, 64, 64, .2f, .2f, .2f, .58f);
@@ -523,7 +601,9 @@ int main()
         Vita_Draw(fabs(cos(_ticks * .5f) * (300 + 40)), (sin(_ticks) * (32 + 64)) , 128, 128);
 
         test_data_1.rot_z = sin((_ticks * .2f)) * 360.f;
+*/
 
+        /*
         Vita_DrawRectColorExData(
             256.f, 256.f,
             256.f, 256.f,
@@ -540,6 +620,7 @@ int main()
         test_sprite_2.scale = 1;
 
         test_sprite_1.rot_z = sin((_ticks * .2f)) * 360.f;
+        */
 
         /*
         Vita_DrawTextureAnimColorExData(
