@@ -10,7 +10,7 @@ void main(
     float2 out texCoord : TEXCOORD0
 )
 {
-    vertPos = mul(mul(mul(float4(aPosition, 0.f, 1.f), _scale), _rot), mvp);
+    vertPos = mul(mul(mul(float4(aPosition, 1.f), _scale), _rot), mvp);
     fragColor = vColor;
     texCoord = vTexCoord;
 }
