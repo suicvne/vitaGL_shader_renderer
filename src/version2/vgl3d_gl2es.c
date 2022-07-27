@@ -34,7 +34,7 @@ vec3 _camEyeRot = {0.0f, 0.0f, 0.0f};
 
 void VGL3D_BindTexture(SELF, VTEX tex) {
     glBindTexture(GL_TEXTURE_2D, tex);
-    context->_curBoundTex = tex;
+    context->private.curBoundTex = tex;
 }
 
 VTEX VGL3D_LoadTextureAt(SELF, const char *path) {
@@ -123,23 +123,30 @@ inline VGL3DContext VGL3D_Create()
         .Log = VGL3D_Log,
         .SetClearColor = VGL3D_SetClearColor,
         .Clear = VGL3D_Clear,
-        ._drawingInProgress = 0,
-        ._continue = 1,
         .SetCamera = VGL3D_SetCamera,
         .LoadTextureAt = _VGL3D_LoadAndCreateGLTexture,
-        .BindTexture = VGL3D_BindTexture
+        .BindTexture = VGL3D_BindTexture,
+        .private = {
+            .curBoundTex = 0,
+            .drawingInProgress = 0,
+            .doContinue = 1
+        }
     };
 
+#ifndef VITA
+    // Desktop GL properties.
+    // Vita is force 960 x 544 and obviously no window title available.
     newContext.config->game_window_width = 960.f;
     newContext.config->game_window_height = 544.f;
     newContext.config->game_window_title = "VGL3D_GL2ES";
+#endif
 
     return newContext;
 }
 
 inline void VGL3D_Begin(SELF) {
-    context->_drawingInProgress = 1;
-    context->_continue = !glfwWindowShouldClose(context->config->game_window);
+    context->private.drawingInProgress = 1;
+    context->private.doContinue = !glfwWindowShouldClose(context->config->game_window);
 
     // Bind Buffers.
 
@@ -152,7 +159,7 @@ inline void VGL3D_Begin(SELF) {
 }
 
 inline void VGL3D_End(SELF) {
-    context->_drawingInProgress = 0;
+    context->private.drawingInProgress = 0;
 #ifdef VITA
     vglSwapBuffers(GL_TRUE);
 #else
@@ -605,7 +612,7 @@ void VGL3D_DrawQuad(
         glVertexAttrib4f(vColorLoc, rgba[0], rgba[1], rgba[2], rgba[3]);
 
         int fUseTexture = glGetUniformLocation(context->config->curShaderID, "useTexture");
-        glUniform1i(fUseTexture, (context->_curBoundTex != 0));
+        glUniform1i(fUseTexture, (context->private.curBoundTex != 0));
     }
 
     // Upload to shader

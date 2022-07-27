@@ -34,60 +34,6 @@ void doUpdate(VGL3DContext* context, float dt)
     context->SetCamera(context, lerpedPos, lerpedRot);
 }
 
-
-int main()
-{
-    VGL3DContext graphics = VGL3D_Create();
-    graphics.InitBackend(&graphics);
-    graphics.Log(&graphics, "Backend Initialized.");
-
-    VTEX thisTex = graphics.LoadTextureAt(&graphics, "../background2-1.png");
-
-    while(graphics._continue)
-    {
-        // Update
-        doUpdate(&graphics, 1 / 240.f);
-
-        graphics.Clear(&graphics);
-        graphics.Begin(&graphics);
-
-        #define SCALE 1.0f
-
-        graphics.BindTexture(&graphics, thisTex);
-        /** Begin Draw Sides **/
-        graphics.DrawQuad(&graphics, 
-            0.f, 0.f, -1.f, 
-            (vec3){0.f, 0.f, 0.f}, 
-            (vec3){SCALE,SCALE,SCALE}, 
-            (vec4){1.0f, 1.0f, 1.0f, 1.0f}
-        );
-        graphics.DrawQuad(&graphics, 
-            -0.5f, 0.f, -0.5f, 
-            (vec3){0.f, 90.f, 0.f}, 
-            (vec3){SCALE,SCALE,SCALE},
-            (vec4){1.0f, 1.0f, 1.0f, 1.0f}
-        );
-        
-        graphics.DrawQuad(&graphics, 
-            0.f, 0.f, 0.f, 
-            (vec3){0.f, 180.f, 0.f}, 
-            (vec3){SCALE,SCALE,SCALE},
-            (vec4){1.0f, 1.0f, 1.0f, 1.0f}
-        );
-        graphics.DrawQuad(&graphics, 
-            0.5f, 0.f, -0.5f, 
-            (vec3){0.f, 270.f, 0.f}, 
-            (vec3){SCALE,SCALE,SCALE},
-            (vec4){1.0f, 1.0f, 1.0f, 1.0f}
-        );
-        graphics.BindTexture(&graphics, 0);
-        /** End Draw Sides **/
-
-        graphics.End(&graphics)
-    }
-}
-
-
 int main()
 {
     printf("Hello world!\n");
@@ -99,7 +45,7 @@ int main()
     VTEX thisTex = graphics.LoadTextureAt(&graphics, "../background2-1.png");
 
     // TODO: while(graphics.DoRun)
-    while(graphics._continue)
+    while(graphics.private.doContinue)
     {
         // Update
         doUpdate(&graphics, 1 / 240.f);

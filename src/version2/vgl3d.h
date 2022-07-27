@@ -65,6 +65,9 @@ static int _userHasLibshaccg()
 #include <cglm/cglm.h>
 #include <cglm/clipspace/ortho_lh_zo.h>
 
+#define C_PRIVATE_BEGIN(N)  struct N##_private {
+#define C_PRIVATE_END       } private;
+
 #ifndef SELF
 #define SELF struct _VGL3D* context
 #endif
@@ -75,22 +78,26 @@ struct _VGL3DConfig;
 typedef struct _VGL3D {
 
     // API Functions!!
-    void (*Begin)(SELF);
-    void (*DrawQuad)(SELF, float x, float y, float z, vec3 rot, vec3 scale, vec4 rgba);
-    void (*End)(SELF);
-    int (*InitBackend)(SELF);
-    void (*Log)(SELF, const char *fmt, ...);
-    void (*SetClearColor)(SELF, vec4 rgba);
-    void (*Clear)(SELF);
-    void (*SetCamera)(SELF, vec3 pos, vec3 rot_deg);
-    VTEX (*LoadTextureAt)(SELF, const char *path);
-    void (*BindTexture)(SELF, VTEX tex);
+    void    (*Begin)(SELF);
+    void    (*DrawQuad)(SELF, float x, float y, float z, vec3 rot, vec3 scale, vec4 rgba);
+    void    (*End)(SELF);
+    int     (*InitBackend)(SELF);
+    void    (*Log)(SELF, const char *fmt, ...);
+    void    (*SetClearColor)(SELF, vec4 rgba);
+    void    (*Clear)(SELF);
+    void    (*SetCamera)(SELF, vec3 pos, vec3 rot_deg);
+    VTEX    (*LoadTextureAt)(SELF, const char *path);
+    void    (*BindTexture)(SELF, VTEX tex);
 
-    // Backend / 'private' data.
-    struct _VGL3DConfig* config;
-    uint8_t _drawingInProgress;
-    uint8_t _continue;
-    VTEX _curBoundTex;
+    // Config. Modifiable
+    struct  _VGL3DConfig* config;
+
+    // 'private' data that someone could still fuck with if they wanted to.
+    C_PRIVATE_BEGIN(VGL3D)
+    uint8_t drawingInProgress;
+    uint8_t doContinue;
+    VTEX    curBoundTex;
+    C_PRIVATE_END;
 
 } VGL3DContext;
 
