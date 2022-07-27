@@ -183,13 +183,13 @@ void Vita_Repaint();
 int Vita_AddShaderPass(char* vert_shader, char* frag_shader, int order);
 
 /// The most basic of draw functions. Draws a white square at a given point.
-void Vita_Draw(float x, float y, float wDst, float hDst);
+void Vita_Draw(float x, float y, float z, float wDst, float hDst);
 
 /**
  * Vita_DrawRectColor():
  *  Draws a colored rect of a given wDst and hDst.
  */
-void Vita_DrawRectColor(float x, float y,
+void Vita_DrawRectColor(float x, float y, float z,
                         float wDst, float hDst,
                         float _r,
                         float _g,
@@ -202,7 +202,7 @@ void Vita_DrawRectColor(float x, float y,
  *  Draws a colored rect of a given wDst and hDst
  *  with a unique rgba color for each vertex.
  */
-void Vita_DrawRect4xColor(float x, float y,
+void Vita_DrawRect4xColor(float x, float y, float z,
                           float wDst, float hDst,
                           float rgba0[4],
                           float rgba1[4],
@@ -215,7 +215,7 @@ void Vita_DrawRect4xColor(float x, float y,
  *  Draws a colored rect with the option of passing in 
  *  pointer to `ex_data` for scale, rotation, and pivot data.
  */
-void Vita_DrawRectColorExData(float x, float y,
+void Vita_DrawRectColorExData(float x, float y, float z,
                            float wDst, float hDst,
                            float _r,
                            float _g,
@@ -240,6 +240,7 @@ void Vita_DrawRectColorExData(float x, float y,
 void Vita_DrawTextureAnimColorExData(
     float x,
     float y,
+    float z,
     float wDst,
     float hDst,
     GLuint texId,
@@ -272,6 +273,7 @@ void Vita_DrawTextureAnimColorExData(
 void Vita_DrawTextureAnimColor(
     float x,
     float y,
+    float z,
     float wDst,
     float hDst,
     GLuint texId,

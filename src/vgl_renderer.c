@@ -55,6 +55,14 @@ static int UNIFORM_USE_TEXTURE_BOOL_INDEX = 0;
 // This will probably be removed.
 static int UNIFORM_SAMPLER_TEXTURE_INDEX = 0;
 
+static int VARYING_LIGHT_INTENSITY_INDEX = 0;
+
+static int UNIFORM_LIGHT_DIRECTION_INDEX = 0;
+
+static int VERTEX_MODEL_MVP_INDEX = 0;
+static int VERTEX_VIEW_MVP_INDEX = 0;
+static int VERTEX_PROJECTION_MVP_INDEX = 0;
+
 static const GLuint VERTEX_SIZE = VERTEX_POS_SIZE + VERTEX_TEXCOORD_SIZE + VERTEX_COLOR_SIZE;
 
 // ------------------------------------------   SHADERS
@@ -240,6 +248,7 @@ static inline void
 _Vita_WriteVertices4xColor(DrawCall *drawCall,
                           float x,
                           float y,
+                          float z,
                           float wDst, float hDst,
                           float n_src_x, float n_src_x2,
                           float n_src_y, float n_src_y2,
@@ -250,7 +259,7 @@ _Vita_WriteVertices4xColor(DrawCall *drawCall,
 {
     if(drawCall == nullptr) return;
 
-    float _z = (MAX_VERTICES - _DrawCalls) / (float)MAX_VERTICES;
+    float _z = z;
     // drawCall->draw_type = GL_TRIANGLE_STRIP;
     drawCall->draw.verts_quad[0].x = x;
     drawCall->draw.verts_quad[0].y = y;
@@ -307,6 +316,7 @@ static inline void
 _Vita_WriteVertices(DrawCall *drawCall, 
                    float x, 
                    float y, 
+                   float z,
                    float wDst, 
                    float hDst, 
                    float n_src_x, 
@@ -320,7 +330,7 @@ _Vita_WriteVertices(DrawCall *drawCall,
 {
     float rgba0[4] = {_r, _g, _b, _a};
     _Vita_WriteVertices4xColor(drawCall, 
-                              x, y, wDst, hDst, 
+                              x, y, z, wDst, hDst, 
                               n_src_x, n_src_x2, n_src_y, n_src_y2, 
                               rgba0, rgba0, rgba0, rgba0);
 }
@@ -393,7 +403,7 @@ GLuint LoadShader(GLenum type, const char *shaderSrc)
  *  Draws a colored rect of a given wDst and hDst
  *  with a unique rgba color for each vertex.
  */
-void Vita_DrawRect4xColor(float x, float y,
+void Vita_DrawRect4xColor(float x, float y, float z,
                           float wDst, float hDst,
                           float rgba0[4],
                           float rgba1[4],
@@ -407,7 +417,7 @@ void Vita_DrawRect4xColor(float x, float y,
     for(int i = 0; i < 4; i++)
         _curDrawCall->draw.verts_quad[i].obj_ptr = 0;
 
-    _Vita_WriteVertices4xColor(_curDrawCall, x, y, wDst, hDst, 0.f, 1.f, 0.f, 1.f, rgba0, rgba1, rgba2, rgba3);
+    _Vita_WriteVertices4xColor(_curDrawCall, x, y, z, wDst, hDst, 0.f, 1.f, 0.f, 1.f, rgba0, rgba1, rgba2, rgba3);
 
     _Vita_DoneWithDrawCall();
 }
@@ -417,7 +427,7 @@ void Vita_DrawRect4xColor(float x, float y,
  * Vita_DrawRectColor():
  *  Draws a colored rect of a given wDst and hDst.
  */
-void Vita_DrawRectColor(float x, float y,
+void Vita_DrawRectColor(float x, float y, float z,
                         float wDst, float hDst,
                         float _r, 
                         float _g,
@@ -425,7 +435,7 @@ void Vita_DrawRectColor(float x, float y,
                         float _a)
 {
     float rgba0[4] = {_r, _g, _b, _a};
-    Vita_DrawRect4xColor(x, y, wDst, hDst, rgba0, rgba0, rgba0, rgba0);
+    Vita_DrawRect4xColor(x, y, z, wDst, hDst, rgba0, rgba0, rgba0, rgba0);
 }
 
 /**
@@ -433,7 +443,7 @@ void Vita_DrawRectColor(float x, float y,
  *  Draws a colored rect with the option of passing in 
  *  pointer to `ex_data` for scale, rotation, and pivot data.
  */
-void Vita_DrawRectColorExData(float x, float y,
+void Vita_DrawRectColorExData(float x, float y, float z,
                            float wDst, float hDst,
                            float _r,
                            float _g,
@@ -443,25 +453,16 @@ void Vita_DrawRectColorExData(float x, float y,
 {
     float rgba0[4] = {_r, _g, _b, _a};
     DrawCall *_curDrawCall = _Vita_GetAvailableDrawCall();
-    // _drawTypes[_DrawCalls] = GL_TRIANGLE_STRIP;
-
-    if(ex_data != NULL)
-        ex_data->textureID = 0;
 
     _curDrawCall->draw.verts_quad[0].obj_ptr = ex_data;
     _curDrawCall->draw.verts_quad[1].obj_ptr = ex_data;
     _curDrawCall->draw.verts_quad[2].obj_ptr = ex_data;
     _curDrawCall->draw.verts_quad[3].obj_ptr = ex_data;
 
-
-    // _curDrawCall->scale = 1.0f;
-    // _curDrawCall->rot_x = 0;
-    // _curDrawCall->rot_y = 0;
-    // _curDrawCall->rot_z = rot;
-    // _curDrawCall->piv_x = x + (wDst * .5f);
-    // _curDrawCall->piv_y = y + (hDst * .5f);
-
-    _Vita_WriteVertices4xColor(_curDrawCall, x, y, wDst, hDst, 1.f, 1.f, 1.f, 1.f, rgba0, rgba0, rgba0, rgba0);
+    ex_data->width = wDst;
+    ex_data->height = hDst;
+    
+    _Vita_WriteVertices4xColor(_curDrawCall, x, y, z, wDst, hDst, 1.f, 1.f, 1.f, 1.f, rgba0, rgba0, rgba0, rgba0);
 
     _Vita_DoneWithDrawCall();
 
@@ -475,6 +476,7 @@ void Vita_DrawRectColorExData(float x, float y,
  */
 void Vita_Draw(float x,
                float y,
+               float z,
                float wDst,
                float hDst)
 {
@@ -488,7 +490,7 @@ void Vita_Draw(float x,
     _curDrawCall->scale = 1.0f;
 #endif
 
-    _Vita_WriteVertices(_curDrawCall, x, y, wDst, hDst, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f);
+    _Vita_WriteVertices(_curDrawCall, x, y, z, wDst, hDst, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f);
     
     _Vita_DoneWithDrawCall();
 }
@@ -509,6 +511,7 @@ void Vita_Draw(float x,
 void Vita_DrawTextureAnimColorExData(
         float x,
         float y,
+        float z,
         float wDst,
         float hDst,
         GLuint texId,
@@ -558,6 +561,7 @@ void Vita_DrawTextureAnimColorExData(
         _curDrawCall, 
         x, 
         y, 
+        z,
         wDst, 
         hDst, 
         n_src_x, 
@@ -587,6 +591,7 @@ void Vita_DrawTextureAnimColorExData(
 void Vita_DrawTextureAnimColor(
         float x,
         float y,
+        float z,
         float wDst,
         float hDst,
         GLuint texId,
@@ -601,7 +606,7 @@ void Vita_DrawTextureAnimColor(
         float _b,
         float _a)
 {
-    Vita_DrawTextureAnimColorExData(x, y, wDst, hDst, texId, tex_w, tex_h, src_x, src_y, src_w, src_h, _r, _g, _b, _a, NULL);
+    Vita_DrawTextureAnimColorExData(x, y, z, wDst, hDst, texId, tex_w, tex_h, src_x, src_y, src_w, src_h, _r, _g, _b, _a, NULL);
 }
 
 // ------------------------------------------   END EXPOSED 2D DRAW FUNCTIONS
@@ -788,11 +793,19 @@ int initGLShading2(char* _vShaderString, char* _fShaderString)
 
     // Uniforms
     VERTEX_MVP_INDEX = glGetUniformLocation(programObjectID, "mvp"); // MVP matrix. In our case, this is an ortho matrix for the Vita's screen.
+    // VERTEX_MODEL_MVP_INDEX = glGetUniformLocation(programObjectID, "_model");
+    // VERTEX_VIEW_MVP_INDEX = glGetUniformLocation(programObjectID, "_view");
+    // VERTEX_PROJECTION_MVP_INDEX = glGetUniformLocation(programObjectID, "_projection");
 
     UNIFORM_ROTMAT_INDEX = glGetUniformLocation(programObjectID, "_rot");
     UNIFORM_SCALE_INDEX = glGetUniformLocation(programObjectID, "_scale");
     
     UNIFORM_USE_TEXTURE_BOOL_INDEX = glGetUniformLocation(programObjectID, "useTexture");
+
+    VARYING_LIGHT_INTENSITY_INDEX = glGetUniformLocation(programObjectID, "lightIntensity");
+    UNIFORM_LIGHT_DIRECTION_INDEX = glGetUniformLocation(programObjectID, "lightDirection");
+
+
 
     glm_mat4_identity(_rot);
     glm_mat4_identity(_rot_arb);
@@ -819,12 +832,14 @@ int initGLShading2(char* _vShaderString, char* _fShaderString)
     }
     CHECK_GL_ERROR("VERTEX_TEXCOORD_INDEX");
 
+    /*
     if(VERTEX_MVP_INDEX <= -1)
     {
         _debugPrintf("VERTEX_MVP_INDEX returned invalid value: %d\n", VERTEX_MVP_INDEX);
         return -1;
     }
     CHECK_GL_ERROR("VERTEX_MVP_INDEX");
+    */
 
     if(VERTEX_COLOR_INDEX <= -1)
     {
@@ -939,6 +954,199 @@ static int _userHasLibshaccg()
 }
 #endif
 
+float __vgl_EyeX = -0.f;
+float __vgl_EyeY = 0.f;
+float __vgl_EyeZ = -3.0f;
+
+float __vgl_RX = 0.f;
+float __vgl_RY = -0.f;
+float __vgl_RZ = -0.f;
+
+float __vgl_LightIntesity = 2.0f;
+vec4 __vgl_LightDirection;
+
+void __UpdateMVP();
+
+#ifndef VITA
+void __key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    if(action == GLFW_PRESS || action == GLFW_REPEAT)
+    {
+        switch(scancode)
+        {
+            case GLFW_KEY_D:
+            case 2:
+                printf("Default");
+                glm_mat4_identity(cpu_mvp);
+                break;
+            case GLFW_KEY_I:
+            case 34:
+                __vgl_LightIntesity += 0.25f;
+                printf("Light Intensity: %.2f\n", __vgl_LightIntesity);
+                break;
+            case GLFW_KEY_O:
+            case 31:
+                __vgl_LightIntesity -= 0.25f;
+                printf("Light Intensity: %.2f\n", __vgl_LightIntesity);
+                break;
+            case GLFW_KEY_UP:
+            case 126:
+                __vgl_EyeY += 0.5f;
+                printf("__vgl_EyeY: %.2f\n", __vgl_EyeY);
+                __UpdateMVP();
+                break;
+            case GLFW_KEY_DOWN:
+            case 125:
+                __vgl_EyeY -= 0.5f;
+                printf("__vgl_EyeY: %.2f\n", __vgl_EyeY);
+                __UpdateMVP();
+                break;
+            case GLFW_KEY_RIGHT:
+            case 124:
+                __vgl_EyeX += 0.5f;
+                printf("__vgl_EyeX: %.2f\n", __vgl_EyeX);
+                __UpdateMVP();
+                break;
+            case GLFW_KEY_LEFT:
+            case 123:
+                __vgl_EyeX -= 0.5f;
+                printf("__vgl_EyeX: %.2f\n", __vgl_EyeX);
+                __UpdateMVP();
+                break;
+            case 33:
+                __vgl_EyeZ -= 1.0f;
+                printf("__vgl_EyeZ: %.2f\n", __vgl_EyeZ);
+                __UpdateMVP();
+                break;
+            case 30:
+                __vgl_EyeZ += 1.0f;
+                printf("__vgl_EyeZ: %.2f\n", __vgl_EyeZ);
+                __UpdateMVP();
+                break;
+            case 7:
+                __vgl_RX += 1.0f;
+                __UpdateMVP();
+                break;
+            case 6:
+                __vgl_RX -= 1.0f;
+                __UpdateMVP();
+                break;
+            case 0:
+                __vgl_RY += 1.0f;
+                printf("LightDir Y: %.2f\n", __vgl_LightDirection[1]);
+                __UpdateMVP();
+                break;
+            case 1:
+                __vgl_RY -= 1.0f;
+                printf("LightDir Y: %.2f\n", __vgl_LightDirection[1]);
+                __UpdateMVP();
+                break;
+            case 12:
+                __vgl_RZ += 1.0f;
+                printf("LightDir Z: %.2f\n", __vgl_LightDirection[2]);
+                __UpdateMVP();
+                break;
+            case 13:
+                __vgl_RZ -= 1.0f;
+                printf("LightDir Z: %.2f\n", __vgl_LightDirection[2]);
+                __UpdateMVP();
+                break;
+            case 35:
+                _debugPrintf("(%.2f, %.2f, %.2f) Rot: (%.2f, %.2f, %.2f)\n", __vgl_EyeX, __vgl_EyeY, __vgl_EyeZ, __vgl_RX, __vgl_RY, __vgl_RZ);
+                break;
+            default:
+                printf("key: %d\n", scancode);
+        }
+    }
+}
+#endif
+
+static inline void __UpdateMVP_Dc(mat4 modelMatrix)
+{
+    mat4 p;
+    glm_mat4_identity(p);
+    // glm_perspective(glm_rad(90.0f), DISPLAY_HEIGHT / (float)DISPLAY_WIDTH, 0.0001f, 10000.0f, p);
+    glm_perspective_default(DISPLAY_HEIGHT / (float)DISPLAY_WIDTH, p);
+
+    mat4 v;
+    glm_look((vec3){__vgl_EyeX, __vgl_EyeY, __vgl_EyeZ}, (vec3){0.0f, 0.0f, 1.0f}, (vec3){0.0f, 1.0f, 0.0f}, v);
+    glm_rotate_z(v, glm_rad(__vgl_RZ), v);
+    glm_rotate_y(v, glm_rad(__vgl_RY), v);
+    glm_rotate_x(v, glm_rad(__vgl_RX), v);
+
+    mat4* mvp[3];
+    mvp[0] = &p; //projection
+    mvp[1] = &v; //view
+    mvp[2] = &modelMatrix; //model
+
+    glm_mat4_mulN(mvp, 3, cpu_mvp);
+}
+
+void __UpdateMVP()
+{
+#if 1
+    glm_ortho_default(1.0f, cpu_mvp);
+
+    mat4 m;
+    glm_mat4_identity(m);
+
+    mat4 p;
+    // glm_ortho(0.0f, DISPLAY_WIDTH, 0.0f, DISPLAY_HEIGHT, -10000.0f, 10000.0f, p);
+    glm_perspective_default(DISPLAY_HEIGHT / (float)DISPLAY_WIDTH, p);
+
+    mat4 v;
+    glm_look((vec3){__vgl_EyeX, __vgl_EyeY, __vgl_EyeZ}, (vec3){0.0f, 0.0f, 1.0f}, (vec3){0.0f, 1.0f, 0.0f}, v);
+    glm_rotate_x(v, glm_rad(__vgl_RX), v);
+    glm_rotate_y(v, glm_rad(__vgl_RY), v);
+    glm_rotate_z(v, glm_rad(__vgl_RZ), v);
+
+    mat4* mvp[3];
+    mvp[2] = &m;
+    mvp[1] = &v;
+    mvp[0] = &p;
+
+    glm_mat4_mulN(mvp, 2, cpu_mvp);
+
+#elif 0
+    mat4 mProjection;
+    mat4 mView;
+    mat4 mModel;
+
+    
+
+    // =========== View ===========
+    mat4 temp;
+    vec3 upVector = {0.0f, 1.0f, 0.0f};
+    glm_rotate(temp, glm_rad(90.0f), (vec3){0.0f, 0.0f, 1.0f});
+    vec3 pitchVectorUp = {1.0f, 0.0f, 0.0f};
+    vec3 yawVector3Right = {0.0f, 1.0f, 0.0f};
+    // rotate around to the required head tilt pitch.
+    glm_rotate(temp, glm_rad(__vgl_PitchVar), pitchVectorUp);
+    glm_rotate(temp, glm_rad(__vgl_YawVar), yawVector3Right);
+    glm_mat4_inv(temp, mView); // Store in mView
+    // =========== View ===========
+
+    // =========== Model ===========
+    glm_mat4_identity(temp);
+    // Store M model.
+    // glm_mat4_mulv(temp, (vec4){0.0f,0.0f,1.0f,0.0f}, mModel);
+    // =========== Model ===========
+
+    // =========== projection ===========
+    glm_perspective_default((float)DISPLAY_WIDTH / (float)DISPLAY_HEIGHT, mProjection);
+    // glm_perspective(60.0f, (float)DISPLAY_WIDTH / (float)DISPLAY_HEIGHT, 1.0f, 1000.0f, mProjection);
+    // =========== projection ===========
+
+    // =========== FINALIZE INTO THIS THING ==========
+    mat4* v[3];
+    v[0] = &mProjection;
+    v[1] = &mView;
+    v[2] = &mModel;
+    glm_mat4_mulN(v, 3, cpu_mvp);
+    // =========== FINALIZE INTO THIS THING ==========    
+    #endif
+}
+
 int initGL(void (*dbgPrintFn)(const char*, ...))
 {
     if(dbgPrintFn == NULL)
@@ -958,18 +1166,20 @@ int initGL(void (*dbgPrintFn)(const char*, ...))
     }
 
 #ifdef VITA
-    vglInitWithCustomSizes(0, 
-                           DISPLAY_WIDTH, 
-                           DISPLAY_HEIGHT, 
-                           8 * 1024 * 1024, 
-                           8 * 1024 * 1024, 
-                           4 * 1024 * 1024, 
-                           SCE_GXM_MULTISAMPLE_NONE);
+    vglInit(50 * 1024 * 1024);
+    // vglInitWithCustomSizes(0, 
+    //                        DISPLAY_WIDTH, 
+    //                        DISPLAY_HEIGHT, 
+    //                        8 * 1024 * 1024, 
+    //                        8 * 1024 * 1024, 
+    //                        4 * 1024 * 1024, 
+    //                        SCE_GXM_MULTISAMPLE_NONE);
     _userHasLibshaccg();
 #endif
 #ifndef VITA // TODO: elif for glew? restructure the *way* this is done? per platform private impl of init functions?
     glewExperimental = 1;
     glfwSetErrorCallback(&glfwError);
+    
     int glfwReturnVal = glfwInit();
     if(glfwReturnVal == GLFW_FALSE)
     {
@@ -981,6 +1191,8 @@ int initGL(void (*dbgPrintFn)(const char*, ...))
     _game_window = glfwCreateWindow(960,544,"Test", 0, 0);
     _debugPrintf("Window Pointer: %p\n", _game_window);
     glfwMakeContextCurrent(_game_window);
+
+    glfwSetKeyCallback(_game_window, __key_callback);
 
     int glewReturnVal = glewInit();
     if(glewReturnVal != GLEW_OK)
@@ -1001,13 +1213,9 @@ int initGL(void (*dbgPrintFn)(const char*, ...))
 
     glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    glm_mat4_identity(cpu_mvp);
-
-    // glMatrixMode(GL_MODELVIEW);
-    // glLoadIdentity();
+    __UpdateMVP();
 
     int a = 0,
-        //b = -(DISPLAY_HEIGHT / 1),
         b = 0,
         c = DISPLAY_WIDTH,
         d = DISPLAY_HEIGHT;
@@ -1036,6 +1244,51 @@ void Vita_Clear()
     Vita_ResetTotalCalls();
 }
 
+
+static obj_extra_data __forward_face = 
+{
+    .rot_x = 0.0f,
+    .rot_y = 0.0f,
+    .rot_z = 90.0f
+};
+
+static obj_extra_data __side_face = 
+{
+    .rot_x = 0.0f,
+    .rot_y = 90.0f,
+    .rot_z = 0.0f
+};
+
+static inline void __Draw_Skybox()
+{
+    #define SKYBOX_SIZE 8.0f
+    #define H_SKYBOX_SIZE (8.0f / 2.0f)
+    #define Q_SKYBOX_SIZE (8.0f / 4.0f)
+
+    #if 1
+    // Draw Forward Quad.
+    Vita_DrawRectColorExData(-H_SKYBOX_SIZE, 0.f, 0.f, SKYBOX_SIZE, SKYBOX_SIZE, 0.2f, 0.2f, 0.2f, 1.0f, &__forward_face);
+    Vita_DrawRectColorExData(-H_SKYBOX_SIZE, 0.f, 0.f, SKYBOX_SIZE, SKYBOX_SIZE, 0.2f, 0.2f, 0.2f, 1.0f, &__forward_face);
+
+    // Draw Side Quad
+    Vita_DrawRectColorExData(-H_SKYBOX_SIZE, 0.f, 0.f, SKYBOX_SIZE, SKYBOX_SIZE, 0.2f, 0.2f, 0.2f, 1.0f, &__side_face);
+    Vita_DrawRectColorExData(-H_SKYBOX_SIZE, 0.f, 0.f, SKYBOX_SIZE, SKYBOX_SIZE, 0.2f, 0.2f, 0.2f, 1.0f, &__side_face);
+    #else
+
+    // Draw Forward Quad.
+    Vita_DrawRectColorExData(-Q_SKYBOX_SIZE, -Q_SKYBOX_SIZE, SKYBOX_SIZE, SKYBOX_SIZE, SKYBOX_SIZE, 0.2f, 0.2f, 0.2f, 1.0f, &__forward_face);
+    Vita_DrawRectColorExData(-Q_SKYBOX_SIZE, -Q_SKYBOX_SIZE, -SKYBOX_SIZE, SKYBOX_SIZE, SKYBOX_SIZE, 0.2f, 0.2f, 0.2f, 1.0f, &__forward_face);
+
+    // Draw Side Quad
+    Vita_DrawRectColorExData(Q_SKYBOX_SIZE, -Q_SKYBOX_SIZE, -Q_SKYBOX_SIZE, SKYBOX_SIZE, SKYBOX_SIZE, 0.2f, 0.2f, 0.2f, 1.0f, &__side_face);
+    Vita_DrawRectColorExData(-Q_SKYBOX_SIZE, -Q_SKYBOX_SIZE, -Q_SKYBOX_SIZE, SKYBOX_SIZE, SKYBOX_SIZE, 0.2f, 0.2f, 0.2f, 1.0f, &__side_face);
+    #endif
+
+    #undef SKYBOX_SIZE
+    #undef H_SKYBOX_SIZE
+}
+
+
 /**
  * Vita_Repaint():
  *  Repaint does the following.
@@ -1051,6 +1304,9 @@ void Vita_Clear()
  */
 void Vita_Repaint()
 {
+    // Draw skybox.
+    __Draw_Skybox();
+
     __vgl_repaint_inprog = 1;
     _Vita_SwapBuffers();
 
@@ -1112,13 +1368,16 @@ void Vita_Repaint()
     int totalTextureSwaps = 0;
     DrawCall _curDrawCall;
 
-    glm_mat4_identity(_scale_arb);
+    // glm_mat4_identity(_scale_arb);
     glm_mat4_identity(_rot_arb);
 
-    glUniformMatrix4fv(UNIFORM_SCALE_INDEX, 1, GL_FALSE, (const GLfloat *)_scale_arb);
+    // glUniformMatrix4fv(UNIFORM_SCALE_INDEX, 1, GL_FALSE, (const GLfloat *)_scale_arb);
     glUniformMatrix4fv(UNIFORM_ROTMAT_INDEX, 1, GL_FALSE, (const GLfloat *)_rot_arb);
 
     glUniform1i(UNIFORM_USE_TEXTURE_BOOL_INDEX, 0);
+
+    glUniform1f(VARYING_LIGHT_INTENSITY_INDEX, __vgl_LightIntesity);
+    glUniform4fv(UNIFORM_LIGHT_DIRECTION_INDEX, 1, __vgl_LightDirection);
     glBindTexture(GL_TEXTURE_2D, 0);
 #ifdef EXPERIMENTAL_SORTING
     int thisBatchStart = 0;
@@ -1136,8 +1395,51 @@ void Vita_Repaint()
 #endif
             if (_curDrawCall.draw.verts_quad[0].obj_ptr != NULL)
             {
-                obj_extra_data ex_data = *((obj_extra_data *)_curDrawCall.draw.verts_quad[0].obj_ptr);
+                obj_extra_data ex_data;
+                if(_curDrawCall.draw.verts_quad[0].obj_ptr != NULL)
+                    ex_data = *((obj_extra_data *)_curDrawCall.draw.verts_quad[0].obj_ptr);
+                
                 _curReqTex = (_curDrawCall.draw.verts_quad[0].obj_ptr != NULL) ? ex_data.textureID : 0;
+
+                mat4 modelMatrix;
+                {    
+                    // build the model matrix. 
+                    mat4 trans_mat;
+                    glm_mat4_identity(trans_mat); // No translation matrix *****for now*****
+
+                    // Compensate for width/height.
+                    glm_translate(trans_mat, 
+                        (vec3)
+                        {
+                            -(_curDrawCall.draw.verts_quad[0].x), 
+                            -(_curDrawCall.draw.verts_quad[0].y), 
+                            -(_curDrawCall.draw.verts_quad[0].z)
+                        }
+                    );
+
+                    mat4 rot_mat;
+                    glm_mat4_identity(rot_mat);
+                    glm_rotate_z(rot_mat, glm_rad(ex_data.rot_z), rot_mat);
+                    glm_rotate_y(rot_mat, glm_rad(ex_data.rot_y), rot_mat);
+                    glm_rotate_x(rot_mat, glm_rad(ex_data.rot_x), rot_mat);
+
+                    mat4 scale_mat;
+                    glm_mat4_identity(scale_mat);
+                    
+                    mat4* _mats[3];
+                    _mats[0] = &trans_mat;
+                    _mats[1] = &rot_mat;
+                    _mats[2] = &scale_mat;
+
+                    // Construct model matrix.
+                    glm_mat4_mulN(_mats, 3, modelMatrix);
+                }
+
+                // Update cpu_mvp with this quad's shit.
+                __UpdateMVP_Dc(modelMatrix);
+
+                // Upload the cpu_mvp. Do not transpose.
+                glUniformMatrix4fv(VERTEX_MVP_INDEX, 1, GL_FALSE, cpu_mvp);
 
                 // Only re-bind texture when it's different
                 // from what's currently bound.
@@ -1154,6 +1456,8 @@ void Vita_Repaint()
 
                     // draw
 #ifdef EXPERIMENTAL_SORTING
+                    
+
                     _debugPrintf("Batch %d: Total Vertices: %d\n", _totalBatches, _totalThisBatch);
                     glDrawArrays(GL_TRIANGLE_STRIP, (i * VERTICES_PER_QUAD), _totalThisBatch);              
                     _totalThisBatch = 0;
@@ -1170,6 +1474,10 @@ void Vita_Repaint()
                 glBindTexture(GL_TEXTURE_2D, 0);
                 _curBoundTex = 0;
 
+                mat4 rot_temp;
+                glm_mat4_identity(rot_temp);
+                glUniformMatrix4fv(UNIFORM_ROTMAT_INDEX, 1, GL_FALSE, rot_temp);
+
 #ifdef EXPERIMENTAL_SORTING
                 _debugPrintf("Batch %d: Total Vertices: %d\n", _totalBatches, _totalThisBatch);
                 glDrawArrays(GL_TRIANGLE_STRIP, (i * VERTICES_PER_QUAD), _totalThisBatch);
@@ -1183,7 +1491,10 @@ void Vita_Repaint()
 #ifndef EXPERIMENTAL_SORTING
             glDrawArrays(GL_TRIANGLE_STRIP, (i * VERTICES_PER_QUAD), VERTICES_PER_QUAD);
 #endif            
+
         }
+        __UpdateMVP();
+        glUniformMatrix4fv(VERTEX_MVP_INDEX, 1, GL_FALSE, cpu_mvp);
     }
 #if DEBUG_BUILD
     if(last_frame_time_s != 0)

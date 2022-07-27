@@ -19,6 +19,8 @@ typedef struct _obj_extra_data
     float rot_y;
     float rot_z;
     float scale;
+    float width;
+    float height;
 } __attribute__ ((packed)) obj_extra_data;
 
 typedef struct _shading_pass

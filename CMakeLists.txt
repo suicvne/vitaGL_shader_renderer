@@ -51,8 +51,10 @@ endif()
 #message("VPK DATA: ${data_VPKSHADOW}")
 
 add_executable(${PROJECT_NAME}
-  src/main.c
-  src/vgl_renderer.c
+  # src/main.c
+  # src/vgl_renderer.c,
+  src/version2/main.c
+  src/version2/vgl3d_gl2es.c
 )
 
 if(CMAKE_BUILD_TYPE MATCHES Debug)
@@ -84,6 +86,8 @@ if(BUILD_VITA)
     SceTouch_stub
     vitashark
     SceShaccCg_stub
+    SceShaccCgExt
+    taihen_stub
     SceKernelDmacMgr_stub
   )
 endif()

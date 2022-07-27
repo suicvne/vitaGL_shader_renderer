@@ -59,8 +59,6 @@ static inline GLuint Vita_LoadTextureGL(void* buffer,
 
     glBindTexture(GL_TEXTURE_2D, returnValue);
 
-
-
     glTexImage2D(GL_TEXTURE_2D, 0, 
                     GL_RGBA, 
                     width, height, 
@@ -71,8 +69,8 @@ static inline GLuint Vita_LoadTextureGL(void* buffer,
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     
     debugPrintf("Wrap: GL_CLAMP_TO_BORDER\n");
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
     debugPrintf("[load_texture] OK! GLuint: %u\n", returnValue);
     return returnValue;
