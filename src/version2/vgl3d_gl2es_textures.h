@@ -63,7 +63,7 @@ static inline int _VGL3D_LoadTextureBufferPNG(
     }
 
     stbi_image_free(uc);
-    context->Log(context, "LoadTextureBufferPNG: %d x %d (%d channels).", *w, *h, *channels);
+    context->Log(context, "LoadTextureBufferPNG: %d x %d (%d channels). (Byte Size: %u)", *w, *h, *channels, texBufSize);
     return 0;
 }
 

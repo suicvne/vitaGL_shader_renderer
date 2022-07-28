@@ -1,6 +1,37 @@
 #include "vgl3d.h"
 #include "vgl3d_gl2es_textures.h"
 
+#ifdef VITA
+// as always rinne, thank you for this small code snippet
+// Checks to make sure the uer has the shader compiler installed.
+// If they don't, display a message and exit gracefully from the process.
+static int userHasLibshaccg_private(VGL3DContext* context)
+{
+    SceCommonDialogConfigParam cmnDlgCfgParam;
+    sceCommonDialogConfigParamInit(&cmnDlgCfgParam);
+
+    SceIoStat st1, st2;
+    if (!(sceIoGetstat("ur0:/data/libshacccg.suprx", &st1) >= 0 || sceIoGetstat("ur0:/data/external/libshacccg.suprx", &st2) >= 0)) {
+        SceMsgDialogUserMessageParam msg_param;
+        sceClibMemset(&msg_param, 0, sizeof(SceMsgDialogUserMessageParam));
+        msg_param.buttonType = SCE_MSG_DIALOG_BUTTON_TYPE_OK;
+        msg_param.msg = (const SceChar8*)"Error: Runtime shader compiler (libshacccg.suprx) is not installed.";
+        context->Log(context, "\n\n\nError: Runtime shader compiler (libshacccg.suprx) is not installed.\n\n\n");
+        SceMsgDialogParam param;
+        sceMsgDialogParamInit(&param);
+        param.mode = SCE_MSG_DIALOG_MODE_USER_MSG;
+        param.userMsgParam = &msg_param;
+        sceMsgDialogInit(&param);
+        while (sceMsgDialogGetStatus() != SCE_COMMON_DIALOG_STATUS_FINISHED) {
+            vglSwapBuffers(GL_TRUE);
+        }
+        sceKernelExitProcess(0);
+    }
+
+    return 1; // TRUE
+}
+#endif
+
 // =========== Concrete Implementations for OpenGL ES 2.0 Renderer =============
 
 // Struct implementation.
@@ -10,18 +41,19 @@ typedef struct _VGL3DConfig {
 #ifndef VITA
     GLFWwindow* game_window;
     const char* game_window_title;
+#endif
     uint16_t game_window_width;
     uint16_t game_window_height;
-#endif
+
+    C_PRIVATE_BEGIN(VGL3DConfig)
 
     mat4 view;
     mat4 proj;
     mat4 cpu_mvp;
-    vec3 camEyePos;
-    vec3 camEyeRot;
     GLuint vbo;
-
     GLuint curShaderID;
+
+    C_PRIVATE_END
 
 } VGL3DConfig;
 
@@ -38,7 +70,10 @@ void VGL3D_BindTexture(SELF, VTEX tex) {
 }
 
 VTEX VGL3D_LoadTextureAt(SELF, const char *path) {
-    /* Unused. */
+    /* 
+    Unused. 
+    Replaced by `_VGL3D_LoadAndCreateGLTexture`
+    */
     return -1;
 }
 
@@ -51,7 +86,6 @@ void VGL3D_SetCamera(VGL3DContext* context, vec3 pos, vec3 rot_deg) {
 
 void glfwError()
 {
-
 }
 
 void __key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
@@ -115,17 +149,17 @@ void __key_callback(GLFWwindow* window, int key, int scancode, int action, int m
 inline VGL3DContext VGL3D_Create()
 {
     VGL3DContext newContext = (VGL3DContext) {
-        .config = malloc(sizeof(VGL3DConfig)),
-        .Begin = VGL3D_Begin,
-        .End = VGL3D_End,
-        .DrawQuad = VGL3D_DrawQuad,
-        .InitBackend = VGL3D_InitBackend,
-        .Log = VGL3D_Log,
-        .SetClearColor = VGL3D_SetClearColor,
-        .Clear = VGL3D_Clear,
-        .SetCamera = VGL3D_SetCamera,
-        .LoadTextureAt = _VGL3D_LoadAndCreateGLTexture,
-        .BindTexture = VGL3D_BindTexture,
+        .config =           malloc(sizeof(VGL3DConfig)),
+        .Begin =            VGL3D_Begin,
+        .End =              VGL3D_End,
+        .DrawQuad =         VGL3D_DrawQuad,
+        .InitBackend =      VGL3D_InitBackend,
+        .Log =              VGL3D_Log,
+        .SetClearColor =    VGL3D_SetClearColor,
+        .Clear =            VGL3D_Clear,
+        .SetCamera =        VGL3D_SetCamera,
+        .LoadTextureAt =    _VGL3D_LoadAndCreateGLTexture,
+        .BindTexture =      VGL3D_BindTexture,
         .private = {
             .curBoundTex = 0,
             .drawingInProgress = 0,
@@ -133,11 +167,11 @@ inline VGL3DContext VGL3D_Create()
         }
     };
 
+    newContext.config->game_window_width = 960.f;
+    newContext.config->game_window_height = 544.f;
 #ifndef VITA
     // Desktop GL properties.
     // Vita is force 960 x 544 and obviously no window title available.
-    newContext.config->game_window_width = 960.f;
-    newContext.config->game_window_height = 544.f;
     newContext.config->game_window_title = "VGL3D_GL2ES";
 #endif
 
@@ -146,7 +180,10 @@ inline VGL3DContext VGL3D_Create()
 
 inline void VGL3D_Begin(SELF) {
     context->private.drawingInProgress = 1;
+
+#ifndef VITA
     context->private.doContinue = !glfwWindowShouldClose(context->config->game_window);
+#endif
 
     // Bind Buffers.
 
@@ -161,7 +198,7 @@ inline void VGL3D_Begin(SELF) {
 inline void VGL3D_End(SELF) {
     context->private.drawingInProgress = 0;
 #ifdef VITA
-    vglSwapBuffers(GL_TRUE);
+    vglSwapBuffers(GL_FALSE);
 #else
     glfwSwapBuffers(context->config->game_window);
     glfwPollEvents();
@@ -176,51 +213,48 @@ static const char* GLSTACKUNDER = "GL_STACK_UNDERFLOW";
 static const char* GLSTACKOVER = "GL_STACK_OVERFLOW";
 static const char* GLUNKNOWN = "GL_UNKNOWN. Sorry.";
 
-static inline void GET_GL_ERROR(GLenum error, char* output)
-{
-    switch(error)
-    {
-    case GL_INVALID_ENUM:
-        memcpy(output, GLINVALIDENUM, strlen(GLINVALIDENUM));
-        break;
-    case GL_INVALID_VALUE:
-        memcpy(output, GLINVALIDVALUE, strlen(GLINVALIDVALUE));
-        break;
-    case GL_INVALID_OPERATION:
-        memcpy(output, GLINVALIDVALUE, strlen(GLINVALIDOP));
-        break;
-    case GL_OUT_OF_MEMORY:
-        memcpy(output, GLOUTOFMEM, strlen(GLOUTOFMEM));
-        break;
-    case GL_STACK_UNDERFLOW:
-        memcpy(output, GLSTACKUNDER, strlen(GLSTACKUNDER));
-        break;
-    case GL_STACK_OVERFLOW:
-        memcpy(output, GLSTACKOVER, strlen(GLSTACKOVER));
-        break;
-    }
+#define SAFE_GET_GL_ERROR(x, y) \
+switch(x) {\
+    case GL_INVALID_ENUM:\
+        y = GLINVALIDENUM;\
+        break;\
+    case GL_INVALID_VALUE:\
+        y = GLINVALIDVALUE;\
+        break;\
+    case GL_INVALID_OPERATION:\
+        y = GLINVALIDOP;\
+        break;\
+    case GL_OUT_OF_MEMORY:\
+        y = GLOUTOFMEM;\
+        break;\
+    case GL_STACK_UNDERFLOW:\
+        y = GLSTACKUNDER;\
+        break;\
+    case GL_STACK_OVERFLOW:\
+        y = GLSTACKOVER;\
+        break;\
+    default:\
+        y = GLUNKNOWN;\
+        break;\
+}\
 
-    memcpy(output, GLUNKNOWN, strlen(GLUNKNOWN));
-}
-
-static inline void CHECK_GL_ERROR(char* prefix) 
+static inline void CHECK_GL_ERROR(SELF, char* prefix) 
 {
     GLenum gl_error = 0;
-    char error_buffer[128];
+    const char *error_msg = NULL;
     if((gl_error = glGetError()) != GL_NO_ERROR)
     {
-        GET_GL_ERROR(gl_error, error_buffer);
-        printf("[%s] OPENGL ERROR: %s\n", prefix, error_buffer);
+        SAFE_GET_GL_ERROR(gl_error, error_msg);
+        context->Log(context, "[%s] OPENGL ERROR: %s\n", prefix, error_msg);
     }
 
-#ifndef VITA
-    memset(error_buffer, 0, sizeof(error_buffer));
-    const char* _eb = (char*)error_buffer;
-    if(glfwGetError(&_eb))
-    {
-        printf("\t\tGLFW: %s", error_buffer);
-    }
-#endif
+// TODO: Fixme.
+// #ifndef VITA
+//     if(glfwGetError(&error_buffer))
+//     {
+//         context->Log(context, "\t\tGLFW: %s", error_buffer);
+//     }
+// #endif
 }
 
 #include <stdio.h>
@@ -249,13 +283,13 @@ static inline int _VGL3D_ReadShaderFromFile(const char* path, size_t* fsize, cha
     return 0;
 }
 
-GLuint _VGL3D_LoadShader(GLenum type, const char *shaderPath)
+GLuint _VGL3D_LoadShader(SELF, GLenum type, const char *shaderPath)
 {
     // Read
     char *shaderSrc = malloc(1);
     size_t shaderSrcLen;
     _VGL3D_ReadShaderFromFile(shaderPath, &shaderSrcLen, &shaderSrc);
-    VGL3D_Log(NULL, "%s: %s\n\n", shaderPath, shaderSrc);
+    context->Log(context, "READ SHADER %s:\n%s\n\n", shaderPath, shaderSrc);
 
     // Compile
     GLuint shader;
@@ -265,7 +299,7 @@ GLuint _VGL3D_LoadShader(GLenum type, const char *shaderPath)
 
     if(shader == 0)
     { 
-        VGL3D_Log(NULL, "!!!!!!!   Unable to create shader: shader returned ID of %d\n", shader);
+        context->Log(context, "!!!!!!!   Unable to create shader: shader returned ID of %d\n", shader);
         if(shaderSrc != NULL)
             free(shaderSrc);
         return 0;
@@ -278,18 +312,18 @@ GLuint _VGL3D_LoadShader(GLenum type, const char *shaderPath)
 
     if(!compiled)
     {
-        VGL3D_Log(NULL, "%s NOT COMPILED.\n", (type == GL_VERTEX_SHADER ? "Vertex Shader" : "Fragment Shader"));
+        context->Log(context, "%s NOT COMPILED.\n", (type == GL_VERTEX_SHADER ? "Vertex Shader" : "Fragment Shader"));
         GLint infoLen = 0;
         glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &infoLen);
 
         if(infoLen > 1)
         {
             char *infoLog = (char*)malloc(sizeof(char) * infoLen);
-
             glGetShaderInfoLog(shader, infoLen, NULL, infoLog);
-            VGL3D_Log(NULL, "\n\nError Compiling Shader:\n\n%s\n", infoLog);
+            context->Log(context, "\n\nError Compiling Shader:\n\n%s\n", infoLog);
             free(infoLog);
         }
+        else context->Log(context, "\tNo failure information available. (infoLen: %d)", infoLen);
 
         glDeleteShader(shader);
 
@@ -297,6 +331,7 @@ GLuint _VGL3D_LoadShader(GLenum type, const char *shaderPath)
             free(shaderSrc);
         return 0;
     }
+    else context->Log(context, "%s compiled! WOOOOOO!", (type == GL_VERTEX_SHADER ? "Vertex Shader" : "Fragment Shader"));
 
     if(shaderSrc != NULL)
         free(shaderSrc);
@@ -305,43 +340,48 @@ GLuint _VGL3D_LoadShader(GLenum type, const char *shaderPath)
 
 void _VGL3D_UpdateViewProjection(SELF, mat4* oModelMat) {
     
-    glm_mat4_identity(context->config->view);
-    glm_mat4_identity(context->config->proj);
-
-    // Model
-    // Keep for now
-    mat4 model = GLM_MAT4_IDENTITY_INIT; 
-    if(oModelMat != NULL)
-    {
-        // Apply transformations.
-        glm_mat4_copy(*oModelMat, model);
-    }
-
+    glm_mat4_identity(context->config->private.view);
     // View
     glm_look(
         (vec3){_camEyePos[0], _camEyePos[1], _camEyePos[2]},
         (vec3){0.0f, 0.0f, 1.0f},  // Look ("forward" axis)
         (vec3){0.0f, 1.0f, 0.0f},  // Up axis.
-        context->config->view
+        context->config->private.view
     );
-    glm_rotate_x(context->config->view, glm_rad(_camEyeRot[0]), context->config->view);
-    glm_rotate_y(context->config->view, glm_rad(_camEyeRot[1]), context->config->view);
-    glm_rotate_z(context->config->view, glm_rad(_camEyeRot[2]), context->config->view);
+    glm_rotate_x(context->config->private.view, glm_rad(_camEyeRot[0]), context->config->private.view);
+    glm_rotate_y(context->config->private.view, glm_rad(_camEyeRot[1]), context->config->private.view);
+    glm_rotate_z(context->config->private.view, glm_rad(_camEyeRot[2]), context->config->private.view);
 
-    // Projection
-    glm_perspective_default(
-        // (float)context->config->game_window_height / (float)context->config->game_window_width, 
+#ifdef VITA
+    glm_perspective(90.0f, 
         (float)context->config->game_window_width / (float)context->config->game_window_height, 
-        context->config->proj
+        0.1f, 10000.0f, 
+        context->config->private.proj
     );
-
+#else
+    // Projection
+    glm_perspective(90.0f, 
+        (float)context->config->game_window_width / (float)context->config->game_window_height, 
+        0.1f, 10000.0f, 
+        context->config->private.proj
+    );
+#endif
+#if 0
     // Make cpu_mvp
     mat4* matrices[3];
-    matrices[0] = &context->config->proj;
-    matrices[1] = &context->config->view;
+    
+    #ifdef VITA
+    matrices[2] = &context->config->private.proj;
+    matrices[1] = &context->config->private.view;
+    matrices[0] = &model;
+    #else
+    matrices[0] = &context->config->private.proj;
+    matrices[1] = &context->config->private.view;
     matrices[2] = &model;
+    #endif
 
-    glm_mat4_mulN(matrices, 3, context->config->cpu_mvp);
+    glm_mat4_mulN(matrices, 3, context->config->private.cpu_mvp);
+#endif
 }
 
 void _VGL3D_MakeDefaultViewProjection(SELF) {
@@ -350,19 +390,30 @@ void _VGL3D_MakeDefaultViewProjection(SELF) {
 
 int _VGL3D_InitShading(SELF, const char* vPath, const char* fPath) {
     context->Log(context, "Init Shading!\n");
-    GLuint vertShaderID = _VGL3D_LoadShader(GL_VERTEX_SHADER, vPath);
-    CHECK_GL_ERROR("Vertex Shader");
-    GLuint fragShaderID = _VGL3D_LoadShader(GL_FRAGMENT_SHADER, fPath);
-    CHECK_GL_ERROR("Fragment Shader");
+
+    context->Log(context, "Loading vertex shader from '%s'..\n", vPath);
+    GLuint vertShaderID = _VGL3D_LoadShader(context, GL_VERTEX_SHADER, vPath);
+    CHECK_GL_ERROR(context, "Vertex Shader");
+
+    GLuint fragShaderID = _VGL3D_LoadShader(context, GL_FRAGMENT_SHADER, fPath);
+    CHECK_GL_ERROR(context, "Fragment Shader");
+
+    if(vertShaderID == 0 || fragShaderID == 0)
+        return -1;
 
     GLuint programID = glCreateProgram();
-    CHECK_GL_ERROR("Create Program");
+    CHECK_GL_ERROR(context, "Create Program");
     glAttachShader(programID, vertShaderID);
-    CHECK_GL_ERROR("Attach Vertex Shader");
+    CHECK_GL_ERROR(context, "Attach Vertex Shader");
     glAttachShader(programID, fragShaderID);
-    CHECK_GL_ERROR("Attach Fragment Shader");
+    CHECK_GL_ERROR(context, "Attach Fragment Shader");
+
+    // Bind vertex attribs
+    glBindAttribLocation(programID, 0, "vPosition");
+    glBindAttribLocation(programID, 1, "vTexCoord");
+
     glLinkProgram(programID);
-    CHECK_GL_ERROR("Linking Program");
+    CHECK_GL_ERROR(context, "Linking Program");
     GLint linked;
     glGetProgramiv(programID, GL_LINK_STATUS, &linked);
     if(!linked)
@@ -374,15 +425,41 @@ int _VGL3D_InitShading(SELF, const char* vPath, const char* fPath) {
     // Grab indexes and everything else.
     context->Log(context, "DONE Init Shading!\n");
 
-    context->config->curShaderID = programID;
+    context->config->private.curShaderID = programID;
 
     return 0;
 }
 
+uint16_t _quad_indices[] = 
+{
+    0,1,2,
+    0,2,3
+};
+
+// Interleaved vertex data.
+#define VGL_COMPONENTS_PER_VERTEX 5
+GLfloat _quad_vertices_packed[] =
+{
+    // bottom left
+    //    Vert Pos      |   Tex Coords
+    // x     y      z     u     v     ignore
+    -0.5f, -0.5f, 1.0f,  0.0f, 1.0f,
+
+    // top left
+    -0.5f, 0.5f, 1.0f,  0.0f, 0.0f,
+
+    // top right
+    0.5f, 0.5f, 1.0f,  1.0f, 0.0f,
+
+    // bottom right
+    0.5f, -0.5, 1.0f, 1.0f, 1.0f,
+};
+
 int VGL3D_InitBackend(SELF) {
 #ifdef VITA // vitaGL initialization.
-    vglInit(50 * 1024 * 1024);
-    _userHasLibshaccg();
+    vglInit(0x800000);
+    userHasLibshaccg_private(context);
+    context->Log(context, "vitaGL has initialized.");
 #else // glew/glfw initialization.
     glewExperimental = 1;
     glfwSetErrorCallback(glfwError);
@@ -393,9 +470,6 @@ int VGL3D_InitBackend(SELF) {
         context->Log(context, "Error initializing glfw. Rval: %d\n", glfwReturnVal);
         return -1;
     }
-
-    // TODO Store in configuration.
-    // TODO: Grab window size/name from configuration.
 
     context->config->game_window = glfwCreateWindow(
         context->config->game_window_width,
@@ -419,7 +493,15 @@ int VGL3D_InitBackend(SELF) {
 
     // Initialize shading.
     // TODO: Configuration for this? Paths for built in shader? Or bundle these into the renderer?
-    int shadingVal = _VGL3D_InitShading(context, "../vert_new.glsl", "../frag_new.glsl");
+    #ifdef VITA
+        const char* vert_path = "app0:vert_new.cgv";
+        const char* frag_path = "app0:frag_new.cgf";
+        context->Log(context, "vert shader path: '%s'\n", vert_path);
+        context->Log(context, "frag shader path: '%s'\n", frag_path);
+        int shadingVal = _VGL3D_InitShading(context, vert_path, frag_path);
+    #else
+        int shadingVal = _VGL3D_InitShading(context, "../vert_new.glsl", "../frag_new.glsl");
+    #endif
     if(shadingVal != 0)
     {
         context->Log(context, "Rval from Shading: %d\n", shadingVal);
@@ -436,12 +518,20 @@ int VGL3D_InitBackend(SELF) {
     glClearColor(0.f, 0.f, 0.5f, 1.0f);
 
     glEnable(GL_TEXTURE_2D);
+    glEnable(GL_BLEND);
     glEnable(GL_DEPTH_TEST);
     glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     glViewport(0,0,960,544);
 
-    glGenBuffers(1, &context->config->vbo);
+    // Generate vbo
+    glGenBuffers(1, &context->config->private.vbo);
+
+    // Bind vbo
+    glBindBuffer(GL_ARRAY_BUFFER, context->config->private.vbo);
+
+    // Buffer the initial data.
+    glBufferData(GL_ARRAY_BUFFER, (sizeof(float) * VGL_COMPONENTS_PER_VERTEX) * 4, _quad_vertices_packed, GL_STATIC_DRAW);
 
 #ifdef __APPLE__
     // Wiggle the window so glfw gets the correct position upon opening.
@@ -451,6 +541,12 @@ int VGL3D_InitBackend(SELF) {
     glfwSetWindowPos(context->config->game_window, xpos+5, ypos+5);
     glfwSetWindowPos(context->config->game_window, xpos, ypos);
 #endif
+
+    // Use shader
+    glUseProgram(context->config->private.curShaderID);
+
+    // Bind vbo
+    glBindBuffer(GL_ARRAY_BUFFER, context->config->private.vbo);
 
     return 0;
 }
@@ -480,54 +576,12 @@ GLfloat _quad_vertices_packed[] =
     0.5f, -0.5, 1.0f, 1.0f, 0.0f,
 };*/
 
-// Interleaved vertex data.
-GLfloat _quad_vertices_packed[] =
-{
-    // bottom left
-    //    Vert Pos      |   Tex Coords
-    // x     y      z     u     v
-    -0.5f, -0.5f, 1.0f,  0.0f, 1.0f,
-
-    // top left
-    -0.5f, 0.5f, 1.0f,  0.0f, 0.0f,
-
-    // top right
-    0.5f, 0.5f, 1.0f,  1.0f, 0.0f,
-
-    // bottom right
-    0.5f, -0.5, 1.0f, 1.0f, 1.0f,
-};
-
-/*
-GLfloat _quad_vertices_packed[] =
-{
-    // bottom left
-    // x     y      z    r      g     b     u     v
-    -1.0f, -1.0f, 1.0f,  1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-
-    // top left
-    -1.0f, 1.0f, 1.0f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-    // top right
-    1.0f, 1.0f, 1.0f,   1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-
-    // bottom right
-    1.0f, -1.0f, 1.0f,  1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-};
-*/
-
 GLfloat _quad_vertices_h[] =
 {
     -0.5f, -0.5f, 1.0f, // bottom left
     -0.5f, 0.5f, 1.0f,  // top left
     0.5f, 0.5f, 1.0f,   // top right
     0.5f, -0.5f, 1.0f,  // bottom right
-};
-
-GLubyte _quad_indices[] = 
-{
-    0,1,2,
-    0,2,3
 };
 
 
@@ -537,109 +591,79 @@ void VGL3D_DrawQuad(
     float y, 
     float z, 
     vec3 rot, 
-    vec3 scale, 
+    vec3 scale,
     vec4 rgba
 )
 {
-    #define USE_SHADERS
-    #define USE_PACKED
+    #define STRIDE (sizeof(float) * VGL_COMPONENTS_PER_VERTEX)
 
-    #ifdef USE_PACKED
-    #define STRIDE (sizeof(float) * 5)
-    #else
-    #define STRIDE 0
-    #endif
-
+    // Build model matrix.
     mat4 model = GLM_MAT4_IDENTITY_INIT;
+    #ifdef VITA
     glm_translate(model, (vec3){x, y, z});
     glm_rotate_x(model, glm_rad(rot[0]), model);
     glm_rotate_y(model, glm_rad(rot[1]), model);
     glm_rotate_z(model, glm_rad(rot[2]), model);
     glm_scale(model, scale);
+    // glm_mat4_transpose(model);
+    #else
+    glm_translate(model, (vec3){x, y, z});
+    glm_rotate_x(model, glm_rad(rot[0]), model);
+    glm_rotate_y(model, glm_rad(rot[1]), model);
+    glm_rotate_z(model, glm_rad(rot[2]), model);
+    glm_scale(model, scale);
+    #endif
 
-
+    // Build mvp with newly created model matrix.
     _VGL3D_UpdateViewProjection(context, &model);
-    
-    // glEnableClientState(GL_VERTEX_ARRAY);
 
-    #ifdef USE_SHADERS
-    glUseProgram(context->config->curShaderID);
-    #else
-    glUseProgram(0);
-    #endif
-
-    glBindBuffer(GL_ARRAY_BUFFER, context->config->vbo);
-    #ifdef USE_PACKED
-    glBufferData(GL_ARRAY_BUFFER, (sizeof(float) * 8) * 4, _quad_vertices_packed, GL_STATIC_DRAW);
-    #else
-    glBufferData(GL_ARRAY_BUFFER, (3 * 4) * sizeof(float), _quad_vertices_h, GL_STATIC_DRAW);
-    #endif
-
-    // Enable shit
-    int vPosLoc;
+    // Enable shit...again wasteful for now.
+    int vPosLoc = 0;
     int vColorLoc;
-    int vTexCoordLoc;
+    int vTexCoordLoc = 1;
     {
-        // glBindBuffer(GL_ARRAY_BUFFER, context->config->vbo);
-        // glBufferData(GL_ARRAY_BUFFER, (3 * 4) * sizeof(float), _quad_vertices_h, GL_STATIC_DRAW);
-        vPosLoc = glGetAttribLocation(context->config->curShaderID, "vPosition");
-        CHECK_GL_ERROR("glGetAttribLocation vPosition");
-
-        vTexCoordLoc = glGetAttribLocation(context->config->curShaderID, "vTexCoord");
-        CHECK_GL_ERROR("glGetAttribLocation vTexCoord");
-
         // Enable Vertex Attributes.
         glEnableVertexAttribArray(vPosLoc);
-        CHECK_GL_ERROR("glEnableVertexAttribArray vPosLoc");
-        
-        #ifdef USE_PACKED
+        CHECK_GL_ERROR(context, "glEnableVertexAttribArray vPosLoc");
         glEnableVertexAttribArray(vTexCoordLoc);
-        CHECK_GL_ERROR("glEnableVertexAttribArray vTexCoordLoc");
-        #endif
+        CHECK_GL_ERROR(context, "glEnableVertexAttribArray vTexCoordLoc");
         
         // Offset for vertex positions
         glVertexAttribPointer(vPosLoc, 3, GL_FLOAT, GL_FALSE, STRIDE, 0);
-        CHECK_GL_ERROR("glVertexAttribPointer xyz");
-
-        #ifdef USE_PACKED
+        CHECK_GL_ERROR(context, "glVertexAttribPointer xyz");
         glVertexAttribPointer(vTexCoordLoc, 2, GL_FLOAT, GL_FALSE, STRIDE, (void*)(sizeof(float) * 3));
-        CHECK_GL_ERROR("glVertexAttribPointer vTexCoord");
-        #endif
+        CHECK_GL_ERROR(context, "glVertexAttribPointer vTexCoord");
 
-        // Color data.
-        vColorLoc = glGetUniformLocation(context->config->curShaderID, "vColor"); // TODO: Interpolate into vertex data.
+        // Color data/use texture flag.
+        vColorLoc = glGetUniformLocation(context->config->private.curShaderID, "vColor"); // TODO: Interpolate into vertex data.
         glUniform4fv(vColorLoc, 1, rgba);
-        glVertexAttrib4f(vColorLoc, rgba[0], rgba[1], rgba[2], rgba[3]);
-
-        int fUseTexture = glGetUniformLocation(context->config->curShaderID, "useTexture");
+        int fUseTexture = glGetUniformLocation(context->config->private.curShaderID, "useTexture");
         glUniform1i(fUseTexture, (context->private.curBoundTex != 0));
-    }
 
-    // Upload to shader
-    #ifdef USE_SHADERS
-    {
-        // Grab uniform locations
-        GLint uniMVP = glGetUniformLocation(context->config->curShaderID, "_mvp");
+        // GLint uniMVP = glGetUniformLocation(context->config->private.curShaderID, "_mvp");
 
-        mat4 i = GLM_MAT4_IDENTITY_INIT;
-        // glUniformMatrix4fv(uniMVP, 1, GL_FALSE, (const GLfloat*)i);
-        glUniformMatrix4fv(uniMVP, 1, GL_FALSE, (const GLfloat*)context->config->cpu_mvp);
-        CHECK_GL_ERROR("glUniformMatrix4fv mvp");
+        GLint uniM = glGetUniformLocation(context->config->private.curShaderID, "_model");
+        GLint uniV = glGetUniformLocation(context->config->private.curShaderID, "_view");
+        GLint uniP = glGetUniformLocation(context->config->private.curShaderID, "_projection");
+
+        glUniformMatrix4fv(uniM, 1, GL_FALSE, (const GLfloat*)model);
+        glUniformMatrix4fv(uniV, 1, GL_FALSE, (const GLfloat*)context->config->private.view);
+        glUniformMatrix4fv(uniP, 1, GL_FALSE, (const GLfloat*)context->config->private.proj);
+        CHECK_GL_ERROR(context, "glUniformMatrix4fv mvp");
+
+        // Use this for when you want rgba to be a per-vertex attribute. Not a huge deal to us right at this very moment.
+        // glVertexAttrib4f(vColorLoc, rgba[0], rgba[1], rgba[2], rgba[3]);
     }
-    #endif
 
     // Tell where in the VBO to start.
     // glVertexPointer(3, GL_FLOAT, 0, 0);
 
     // Actually finally draw something to the screen.
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_BYTE, _quad_indices);
-
-    // glDisableClientState(GL_VERTEX_ARRAY);
-    CHECK_GL_ERROR("glDrawElements");
-    #ifdef USE_SHADERS
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, _quad_indices);
+    // glDrawArrays(GL_TRIANGLES, 0, 6);
+    CHECK_GL_ERROR(context, "glDrawElements");
     glDisableVertexAttribArray(vPosLoc);
     glDisableVertexAttribArray(vTexCoordLoc);
-    #endif
 }
 
 void VGL3D_SetClearColor(SELF, vec4 rgba)
