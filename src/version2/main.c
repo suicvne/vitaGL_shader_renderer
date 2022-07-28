@@ -154,7 +154,10 @@ int main()
         graphics.End(&graphics);
     }
 
-    // TODO: Destroy graphics contexts.
+    // Destroy created texture.
+    graphics.DestroyTexture(&graphics, thisTex);
+    graphics.DestroyBackend(&graphics); // Close the backend.
+    graphics.DestroySelf(&graphics);    // Destroy any other private data here.
     NETLOG_VITA_FINISH();
 
     return 0;

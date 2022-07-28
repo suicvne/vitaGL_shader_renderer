@@ -160,6 +160,9 @@ inline VGL3DContext VGL3D_Create()
         .SetCamera =        VGL3D_SetCamera,
         .LoadTextureAt =    _VGL3D_LoadAndCreateGLTexture,
         .BindTexture =      VGL3D_BindTexture,
+        .DestroyBackend =   VGL3D_DestroyBackend,
+        .DestroySelf =      VGL3D_DestroySelf,
+        .DestroyTexture =   VGL3D_DestroyTexture,
         .private = {
             .curBoundTex = 0,
             .drawingInProgress = 0,
@@ -259,6 +262,8 @@ static inline void CHECK_GL_ERROR(SELF, char* prefix)
 
 #include <stdio.h>
 #include <stdlib.h>
+
+
 
 static inline int _VGL3D_ReadShaderFromFile(const char* path, size_t* fsize, char** buffer)
 {
@@ -366,22 +371,6 @@ void _VGL3D_UpdateViewProjection(SELF, mat4* oModelMat) {
         context->config->private.proj
     );
 #endif
-#if 0
-    // Make cpu_mvp
-    mat4* matrices[3];
-    
-    #ifdef VITA
-    matrices[2] = &context->config->private.proj;
-    matrices[1] = &context->config->private.view;
-    matrices[0] = &model;
-    #else
-    matrices[0] = &context->config->private.proj;
-    matrices[1] = &context->config->private.view;
-    matrices[2] = &model;
-    #endif
-
-    glm_mat4_mulN(matrices, 3, context->config->private.cpu_mvp);
-#endif
 }
 
 void _VGL3D_MakeDefaultViewProjection(SELF) {
@@ -454,6 +443,53 @@ GLfloat _quad_vertices_packed[] =
     // bottom right
     0.5f, -0.5, 1.0f, 1.0f, 1.0f,
 };
+
+
+void VGL3D_DestroyTexture (SELF, VTEX texToDestroy) {
+    if(texToDestroy == 0)
+    {
+        context->Log(context, "Note: attempted to destroy texture with invalid texture ID of 0.");
+        return;
+    }
+
+    glDeleteTextures(1, &texToDestroy);
+    CHECK_GL_ERROR(context, "glDeleteTextures");
+
+    context->Log(context, "Destroyed texture with ID %u", texToDestroy);
+}
+
+void VGL3D_DestroyBackend(SELF) {
+    context->Log(context, "Destroy Backend.");
+
+    // Free OpenGL resources.
+    glDeleteBuffers(1, &context->config->private.vbo);
+    CHECK_GL_ERROR(context, "glDeleteTextures");
+
+    // Destroy shader
+    glDeleteProgram(context->config->private.curShaderID);
+    CHECK_GL_ERROR(context, "glDeleteProgram");
+
+#ifndef VITA
+    // Free glfw window. Terminate glfw.
+    glfwDestroyWindow(context->config->game_window);
+    glfwTerminate();
+#else
+    vglEnd();
+#endif
+
+    
+}
+
+void VGL3D_DestroySelf(SELF) {
+    context->Log(context, "Destroy self. (internal config malloced)");
+
+    // free config.
+    if(context->config != NULL)
+    {
+        context->Log(context, "Freeing %u byte config.\n", sizeof(VGL3DConfig));
+        free(context->config);
+    }
+}
 
 int VGL3D_InitBackend(SELF) {
 #ifdef VITA // vitaGL initialization.
