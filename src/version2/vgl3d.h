@@ -6,16 +6,19 @@ extern "C" {
 #define __VGL_3D_H__
 
 #if defined(__APPLE__) || defined(PC_BUILD) 
+// glew header
 #include <GL/glew.h>
-
 #ifndef __APPLE__
+// GL header for Linux and presumably Windows. Dunno.
 #include <GL/gl.h>
 #else
+// glu header for Apple Mac OS X.
 #include <OpenGL/glu.h>
 #endif
-
+// glfw header
 #include <GLFW/glfw3.h>
 #else
+// PS Vita headers.
 #include <vitasdk.h>
 #include <vitaGL.h>
 #include <psp2/gxm.h>
@@ -32,7 +35,6 @@ extern "C" {
 #endif
 
 #include <stdarg.h>
-#include <memory.h>
 #include <cglm/cglm.h>
 #include <cglm/clipspace/ortho_lh_zo.h>
 
@@ -43,9 +45,17 @@ extern "C" {
 #define SELF struct _VGL3D* context
 #endif
 
-// Forward declare config.
+// Forward declare per platform configuration structure.
 struct _VGL3DConfig;
 
+/**
+ * @brief VGL3DContext is essentially a fancy vtable.
+ * These are your API functions! Call them on this structure to ensure
+ * the correct function is called for your rendering platform.
+ * 
+ * If you need some more functionality, you can even override and hook into these yourself!
+ * We have private data, but we're not gonna stop you from fucking with it anyway!
+ */
 typedef struct _VGL3D {
 
     // API Functions!!
@@ -79,7 +89,16 @@ typedef struct _VGL3D {
 
 #define SELF VGL3DContext* context
 
-static inline void VGL3D_Log(VGL3DContext* context, const char *fmt, ...)
+/**
+ * @brief Default VGL3D log function.
+ * Behaves like printf. 
+ * New line is automatically appended to the end.
+ * 
+ * @param context   VGL3D context
+ * @param fmt       Format string.
+ * @param ...       va args to fill in the format string.
+ */
+static inline void VGL3D_Log(SELF, const char *fmt, ...)
 {
     char buffer[2048];
     va_list args;
@@ -89,38 +108,25 @@ static inline void VGL3D_Log(VGL3DContext* context, const char *fmt, ...)
     va_end(args);
 }
 
-/// Public facing function to create a nicely initialized VGL3DContext.
-VGL3DContext VGL3D_Create();
-
-void VGL3D_Begin(SELF);
-void VGL3D_End(SELF);
-
-/// Initializes the backends necessary to render.
-/// PC: (GlFW, GlEW, GL); Vita: VGL
-int VGL3D_InitBackend(SELF);
-
-void VGL3D_DrawQuad(
-    SELF,
-    float x, 
-    float y, 
-    float z, 
-    vec3 rot, 
-    vec3 scale, 
-    vec4 rgba
-);
-VTEX VGL3D_LoadTextureAt(SELF, const char *path);
-void VGL3D_BindTexture(SELF, VTEX tex);
-void VGL3D_SetCamera(SELF, vec3 pos, vec3 rot_deg);
-void VGL3D_SetClearColor(SELF, vec4 rgba);
-void VGL3D_Clear(SELF);
-void VGL3D_DestroyTexture(SELF, VTEX texToDestroy);
-void VGL3D_DestroyBackend(SELF);
-void VGL3D_DestroySelf(SELF);
+// ------------------------------ Default/reference function signatures. ------------------------------ 
+VGL3DContext    VGL3D_Create();
+void            VGL3D_Begin(SELF);
+void            VGL3D_End(SELF);
+int             VGL3D_InitBackend(SELF);
+void            VGL3D_DrawQuad(SELF, float x, float y, float z, vec3 rot, vec3 scale, vec4 rgba);
+VTEX            VGL3D_LoadTextureAt(SELF, const char *path);
+void            VGL3D_BindTexture(SELF, VTEX tex);
+void            VGL3D_SetCamera(SELF, vec3 pos, vec3 rot_deg);
+void            VGL3D_SetClearColor(SELF, vec4 rgba);
+void            VGL3D_Clear(SELF);
+void            VGL3D_DestroyTexture(SELF, VTEX texToDestroy);
+void            VGL3D_DestroyBackend(SELF);
+void            VGL3D_DestroySelf(SELF);
+// ------------------------------ Default/reference function signatures. ------------------------------ 
 
 #undef SELF
 
 #endif
-
 #ifdef __cplusplus
 }
 #endif

@@ -31,7 +31,7 @@ struct _VGL3D;
  * Usage:
  * void* tex_buffer; // Will be allocated as needed by stbi.
  * int w = 0, h = 0, channels = 0;
- * _VGL3D_LoadTextureBufferPNG(&graphics, texPath, &tex_buffer, &w, &h, &channels);
+ * VGL3D_LoadTextureBufferPNG_private(&graphics, texPath, &tex_buffer, &w, &h, &channels);
  * // tex_buffer will now contain raw texture data to be sent to GPU.
  * 
  * @param context 
@@ -42,7 +42,7 @@ struct _VGL3D;
  * @param channels 
  * @return int 
  */
-static inline int _VGL3D_LoadTextureBufferPNG(
+static inline int VGL3D_LoadTextureBufferPNG_private(
     SELF,
     const char* path,
     void** buffer,
@@ -67,7 +67,7 @@ static inline int _VGL3D_LoadTextureBufferPNG(
     return 0;
 }
 
-static inline VTEX _VGL3D_MakeGLTexture(SELF, void* buffer, float width, float height) {
+static inline VTEX VGL3D_MakeGLTexture_private(SELF, void* buffer, float width, float height) {
     if(buffer == 0 || (width <= 0 || height <= 0)) {
         context->Log(context, "Attempted to make GLTexture with invalid data (buffer: %p; %.2f x %.2f)", buffer, width, height);
         return -1;
@@ -93,18 +93,18 @@ static inline VTEX _VGL3D_MakeGLTexture(SELF, void* buffer, float width, float h
     return newGlTex;
 }
 
-static inline VTEX _VGL3D_LoadAndCreateGLTexture(SELF, const char *path)
+static inline VTEX VGL3D_LoadAndCreateGLTexture_private(SELF, const char *path)
 {
     void* rawTexBuffer;
     int channels = 0, w = 0, h = 0;
 
     // Load raw texture data.
-    _VGL3D_LoadTextureBufferPNG(context, path, &rawTexBuffer, &w, &h, &channels);
+    VGL3D_LoadTextureBufferPNG_private(context, path, &rawTexBuffer, &w, &h, &channels);
     if(w == 0 && h == 0)
         return 0;
     
     // Make raw texture buffer 
-    VTEX newTex = _VGL3D_MakeGLTexture(context, rawTexBuffer, (float)w, (float)h);
+    VTEX newTex = VGL3D_MakeGLTexture_private(context, rawTexBuffer, (float)w, (float)h);
 
     // Free buffer
     if(rawTexBuffer != NULL)

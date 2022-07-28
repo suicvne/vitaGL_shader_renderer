@@ -1,41 +1,23 @@
 #include "vgl3d.h"
 #include "vgl3d_gl2es_textures.h"
+#include "vgl3d_debug.h"
 
-#ifdef VITA
-// as always rinne, thank you for this small code snippet
-// Checks to make sure the uer has the shader compiler installed.
-// If they don't, display a message and exit gracefully from the process.
-static int userHasLibshaccg_private(VGL3DContext* context)
-{
-    SceCommonDialogConfigParam cmnDlgCfgParam;
-    sceCommonDialogConfigParamInit(&cmnDlgCfgParam);
-
-    SceIoStat st1, st2;
-    if (!(sceIoGetstat("ur0:/data/libshacccg.suprx", &st1) >= 0 || sceIoGetstat("ur0:/data/external/libshacccg.suprx", &st2) >= 0)) {
-        SceMsgDialogUserMessageParam msg_param;
-        sceClibMemset(&msg_param, 0, sizeof(SceMsgDialogUserMessageParam));
-        msg_param.buttonType = SCE_MSG_DIALOG_BUTTON_TYPE_OK;
-        msg_param.msg = (const SceChar8*)"Error: Runtime shader compiler (libshacccg.suprx) is not installed.";
-        context->Log(context, "\n\n\nError: Runtime shader compiler (libshacccg.suprx) is not installed.\n\n\n");
-        SceMsgDialogParam param;
-        sceMsgDialogParamInit(&param);
-        param.mode = SCE_MSG_DIALOG_MODE_USER_MSG;
-        param.userMsgParam = &msg_param;
-        sceMsgDialogInit(&param);
-        while (sceMsgDialogGetStatus() != SCE_COMMON_DIALOG_STATUS_FINISHED) {
-            vglSwapBuffers(GL_TRUE);
-        }
-        sceKernelExitProcess(0);
-    }
-
-    return 1; // TRUE
-}
-#endif
+#include <stdio.h>
+#include <stdlib.h>
 
 // =========== Concrete Implementations for OpenGL ES 2.0 Renderer =============
 
-// Struct implementation.
-// Configuration and any extra data.
+/**
+ * @brief OpenGL ES 2.0 configuration.
+ * - (PC ONLY) GLFWwindow and title.
+ * - game_window_width / game_window_height (which is really the resolution.)
+ * - Private runtime data:
+ *      - current view matrix
+ *      - current projection matrix
+ *      - (NOT USED) completed MVP.
+ *      - The default quad vbo handle.
+ *      - The default shader program handle.
+ */
 typedef struct _VGL3DConfig {
 
 #ifndef VITA
@@ -57,95 +39,28 @@ typedef struct _VGL3DConfig {
 
 } VGL3DConfig;
 
-vec3 _camEyePos = {0.0f, 0.0f, -2.0f};
-vec3 _camEyeRot = {0.0f, 0.0f, 0.0f};
+vec3 camEyePos_p = {0.0f, 0.0f, -2.0f};
+vec3 camEyeRot_p = {0.0f, 0.0f, 0.0f};
 
 #ifndef SELF
 #define SELF VGL3DContext* context
 #endif
 
-void VGL3D_BindTexture(SELF, VTEX tex) {
-    glBindTexture(GL_TEXTURE_2D, tex);
-    context->private.curBoundTex = tex;
-}
-
-VTEX VGL3D_LoadTextureAt(SELF, const char *path) {
-    /* 
-    Unused. 
-    Replaced by `_VGL3D_LoadAndCreateGLTexture`
-    */
-    return -1;
-}
-
-void VGL3D_SetCamera(VGL3DContext* context, vec3 pos, vec3 rot_deg) {
-    glm_vec3_copy(pos, _camEyePos);
-    glm_vec3_copy(rot_deg, _camEyeRot);
-}
-
-#ifndef VITA
-
-void glfwError()
-{
-}
-
-void __key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
-{
-    if(action == GLFW_PRESS || action == GLFW_REPEAT)
-    {
-        const float amt = 30.0f;
-
-        switch(scancode)
-        {
-            case GLFW_KEY_UP:
-            case 126:
-                _camEyePos[1] += 0.5f;
-                break;
-            case GLFW_KEY_DOWN:
-            case 125:
-                _camEyePos[1] -= 0.5f;
-                break;
-            case GLFW_KEY_RIGHT:
-            case 124:
-                _camEyePos[0] += 0.5f;
-                break;
-            case GLFW_KEY_LEFT:
-            case 123:
-                _camEyePos[0] -= 0.5f;
-                break;
-            case 33:
-                _camEyePos[2] -= 1.0f;
-                break;
-            case 30:
-                _camEyePos[2] += 1.0f;
-                break;
-            case 7:
-                _camEyeRot[0] += amt;
-                break;
-            case 6:
-                _camEyeRot[0] -= amt;
-                break;
-            case 0:
-                _camEyeRot[1] += amt;
-                break;
-            case 1:
-                _camEyeRot[1] -= amt;
-                break;
-            case 12:
-                _camEyeRot[2] += amt;
-                break;
-            case 13:
-                _camEyeRot[2] -= amt;
-                break;
-            case 35:
-                VGL3D_Log(NULL, "(%.2f, %.2f, %.2f) Rot: (%.2f, %.2f, %.2f)\n", _camEyePos[0], _camEyePos[1], _camEyePos[2], _camEyeRot[0], _camEyeRot[1], _camEyeRot[2]);
-                break;
-            default:
-                printf("key: %d\n", scancode);
-        }
-    }
-}
-#endif
-
+/**
+ * @brief Creates a VGL3DContext on the stack.
+ * 
+ * Initializes default function pointers.
+ * Initializes private variables to sane defaults.
+ * Sets config->game_window_width/height to sane defaults (960 x 544)
+ * (PC only) Sets game_window_title
+ * 
+ * This function will malloc for sizeof(VGL3DConfig).
+ * The size of VGL3DConfig will vary per platform.
+ * 
+ * @return VGL3DContext: A fully setup and ready-to-use VGL3DContext.
+ * 
+ * vgl3d_gl2es.c
+ */
 inline VGL3DContext VGL3D_Create()
 {
     VGL3DContext newContext = (VGL3DContext) {
@@ -158,7 +73,7 @@ inline VGL3DContext VGL3D_Create()
         .SetClearColor =    VGL3D_SetClearColor,
         .Clear =            VGL3D_Clear,
         .SetCamera =        VGL3D_SetCamera,
-        .LoadTextureAt =    _VGL3D_LoadAndCreateGLTexture,
+        .LoadTextureAt =    VGL3D_LoadAndCreateGLTexture_private,
         .BindTexture =      VGL3D_BindTexture,
         .DestroyBackend =   VGL3D_DestroyBackend,
         .DestroySelf =      VGL3D_DestroySelf,
@@ -172,32 +87,97 @@ inline VGL3DContext VGL3D_Create()
 
     newContext.config->game_window_width = 960.f;
     newContext.config->game_window_height = 544.f;
+
 #ifndef VITA
-    // Desktop GL properties.
-    // Vita is force 960 x 544 and obviously no window title available.
+    // Only makes sense to set this on the desktop.
     newContext.config->game_window_title = "VGL3D_GL2ES";
+#else
+    newContext.config->game_window_title = NULL;
 #endif
 
     return newContext;
 }
 
+/**
+ * @brief Binds a texture given a VGL3DContext and VTEX texture.
+ * VTEX is a texture handle defined per-platform.
+ * 
+ * @param tex VTEX texture handle.
+ * 
+ * @example
+ * VGL3DContext context = VGL3D_Create();
+ * // Usual VGL3D setup
+ * VTEX thisTex = context.LoadTextureAt(&context, "/path/to/texture.png");
+ * context.BindTexture(&context, thisTex);
+ * // Proceeding graphics.Draw calls will use this texture.
+ * * vgl3d_gl2es.c
+ */
+void VGL3D_BindTexture(SELF, VTEX tex) {
+    glBindTexture(GL_TEXTURE_2D, tex);
+    context->private.curBoundTex = tex;
+}
+
+/**
+ * @brief Unused for this platform.
+ * Overriden in VGL3D_Create with VGL3D_LoadAndCreateGLTexture_private
+ * 
+ * @param path 
+ * @return VTEX Ready-to-use texture handle. Returns -1 if there is a problem.
+ * 
+ * @example
+ * VGL3DContext context = VGL3D_Create();
+ * // Usual VGL3D setup
+ * VTEX thisTex = context.LoadTextureAt(&context, "/path/to/texture.png");
+ * 
+ * * vgl3d_gl2es.c
+ */
+VTEX VGL3D_LoadTextureAt(SELF, const char *path) {
+    /* 
+    Unused. 
+    Replaced by `VGL3D_LoadAndCreateGLTexture_private`
+    */
+    return -1;
+}
+
+/**
+ * @brief Sets camera position and rotation given the passed values.
+ * 
+ * @param SELF = context 
+ * @param pos World space position for the camera eye.
+ * @param rot_deg X/Y/Z rotation values in degrees.
+ * * vgl3d_gl2es.c
+ */
+void VGL3D_SetCamera(VGL3DContext* context, vec3 pos, vec3 rot_deg) {
+    glm_vec3_copy(pos, camEyePos_p);
+    glm_vec3_copy(rot_deg, camEyeRot_p);
+}
+
+/**
+ * @brief Tells VGL3D that we are ready to draw stuff to the screen.
+ * 
+ * @param SELF = context
+ * * vgl3d_gl2es.c
+ */
 inline void VGL3D_Begin(SELF) {
     context->private.drawingInProgress = 1;
 
 #ifndef VITA
     context->private.doContinue = !glfwWindowShouldClose(context->config->game_window);
 #endif
-
+    // TODO Maybe?
     // Bind Buffers.
-
     // Use shaders.
-
     // Set glVertexAttribPointers
-
     // Set glUniformMatrix4fv
-
 }
 
+/**
+ * @brief Tells VGL3D that we are done drawing stuff to the screen.
+ * For gl2es, this will swap buffers. On desktop glfw, this will also poll events.
+ * 
+ * @param SELF = context
+ * * vgl3d_gl2es.c
+ */
 inline void VGL3D_End(SELF) {
     context->private.drawingInProgress = 0;
 #ifdef VITA
@@ -208,92 +188,70 @@ inline void VGL3D_End(SELF) {
 #endif
 }
 
-static const char* GLINVALIDENUM = "GL_INVALID_ENUM";
-static const char* GLINVALIDVALUE = "GL_INVALID_VALUE";
-static const char* GLINVALIDOP = "GL_INVALID_OPERATION";
-static const char* GLOUTOFMEM = "GL_OUT_OF_MEMORY";
-static const char* GLSTACKUNDER = "GL_STACK_UNDERFLOW";
-static const char* GLSTACKOVER = "GL_STACK_OVERFLOW";
-static const char* GLUNKNOWN = "GL_UNKNOWN. Sorry.";
-
-#define SAFE_GET_GL_ERROR(x, y) \
-switch(x) {\
-    case GL_INVALID_ENUM:\
-        y = GLINVALIDENUM;\
-        break;\
-    case GL_INVALID_VALUE:\
-        y = GLINVALIDVALUE;\
-        break;\
-    case GL_INVALID_OPERATION:\
-        y = GLINVALIDOP;\
-        break;\
-    case GL_OUT_OF_MEMORY:\
-        y = GLOUTOFMEM;\
-        break;\
-    case GL_STACK_UNDERFLOW:\
-        y = GLSTACKUNDER;\
-        break;\
-    case GL_STACK_OVERFLOW:\
-        y = GLSTACKOVER;\
-        break;\
-    default:\
-        y = GLUNKNOWN;\
-        break;\
-}\
-
-static inline void CHECK_GL_ERROR(SELF, char* prefix) 
+/**
+ * @brief Private function.
+ * Uses stdio to open and read the contents of the file into *buffer.
+ * 
+ * *buffer should be allocated with *something* before passing it in.
+ * This function will realloc for the filesize.
+ * 
+ * 
+ * @param path      The absolute path to the shader file to be loaded.
+ * @param fsize     A pointer to toss the buffer size into.
+ * @param buffer    An allocated buffer to put the contents of the file into. 
+ * @return int returns 0 if successful, -1 if unsuccessful.
+ * If successful, *buffer will contain null terminated shader text data.
+ * 
+ * @example
+ *  char *shaderSrc = malloc(1);
+ *  size_t shaderSrcLen;
+ *  VGL3D_ReadShaderFromFile_private(shaderPath, &shaderSrcLen, &shaderSrc);
+ */
+static inline int VGL3D_ReadShaderFromFile_private(const char* path, size_t* fsize, char** buffer)
 {
-    GLenum gl_error = 0;
-    const char *error_msg = NULL;
-    if((gl_error = glGetError()) != GL_NO_ERROR)
-    {
-        SAFE_GET_GL_ERROR(gl_error, error_msg);
-        context->Log(context, "[%s] OPENGL ERROR: %s\n", prefix, error_msg);
-    }
-
-// TODO: Fixme.
-// #ifndef VITA
-//     if(glfwGetError(&error_buffer))
-//     {
-//         context->Log(context, "\t\tGLFW: %s", error_buffer);
-//     }
-// #endif
-}
-
-#include <stdio.h>
-#include <stdlib.h>
-
-
-
-static inline int _VGL3D_ReadShaderFromFile(const char* path, size_t* fsize, char** buffer)
-{
+    // Open the file, reading only.
     FILE *_file = fopen(path, "r");
 
+    // Couldn't open? Return -1 to indicate error.
     if(_file == NULL)
-    {
         return -1;
-    }
 
+    // Seek to end. Ask for file size. Seek to beginning to read.
     fseek(_file, 0, SEEK_END);
     *fsize = ftell(_file);
     fseek(_file, 0, SEEK_SET);
 
+    // Realloc the buffer
     *buffer = (char*)realloc(*buffer, (*fsize) + 1);
+    // Reads *fsize bytes into *buffer.
     fread(*buffer, *fsize, 1, _file);
 
+    // Null terminate. 
     size_t offset = *fsize;
     (*buffer)[offset] = '\0';
 
+    // Close the file.
     fclose(_file);
     return 0;
 }
 
-GLuint _VGL3D_LoadShader(SELF, GLenum type, const char *shaderPath)
+/**
+ * @brief Private function.
+ * Loads a shader of a given GLenum type at the given path.
+ * Reads the file, creates the shader, loads the shader source through OpenGL.
+ * Then, we compile the shader, check for errors, and returns the shader handle if successful.
+ * 
+ * 
+ * @param type          Type of shader. GL Vert Shader or GL Frag Shader.
+ * @param shaderPath    Absolute path to the shader file to load. Extension doesn't matter.
+ * @return GLuint       Returns 0 if there was a problem, or the handle to the created shader.
+ */
+static inline GLuint VGL3D_LoadShader_private(SELF, GLenum type, const char *shaderPath)
 {
     // Read
     char *shaderSrc = malloc(1);
     size_t shaderSrcLen;
-    _VGL3D_ReadShaderFromFile(shaderPath, &shaderSrcLen, &shaderSrc);
+    VGL3D_ReadShaderFromFile_private(shaderPath, &shaderSrcLen, &shaderSrc);
     context->Log(context, "READ SHADER %s:\n%s\n\n", shaderPath, shaderSrc);
 
     // Compile
@@ -343,20 +301,34 @@ GLuint _VGL3D_LoadShader(SELF, GLenum type, const char *shaderPath)
     return shader;
 }
 
-void _VGL3D_UpdateViewProjection(SELF, mat4* oModelMat) {
+/**
+ * @brief Private function.
+ * Updates the view & projection matrices that are stored in VGL3DConfig.
+ * 
+ * Uses glm_look to set the view matrix position given camEyePos_p.
+ * Uses glm_rotate_ to set the view matrix rotation given camEyeRot_p.
+ * Uses glm_perspective to set a 90º FOV projection matrix. near=0.1f, far=10000.0f
+ * 
+ * @param oModelMat (Do not use this parameter. To be removed.)
+ */
+void VGL3D_UpdateViewProjection_private(SELF, mat4* oModelMat) {
     
     glm_mat4_identity(context->config->private.view);
     // View
     glm_look(
-        (vec3){_camEyePos[0], _camEyePos[1], _camEyePos[2]},
+        (vec3){camEyePos_p[0], camEyePos_p[1], camEyePos_p[2]},
         (vec3){0.0f, 0.0f, 1.0f},  // Look ("forward" axis)
         (vec3){0.0f, 1.0f, 0.0f},  // Up axis.
         context->config->private.view
     );
-    glm_rotate_x(context->config->private.view, glm_rad(_camEyeRot[0]), context->config->private.view);
-    glm_rotate_y(context->config->private.view, glm_rad(_camEyeRot[1]), context->config->private.view);
-    glm_rotate_z(context->config->private.view, glm_rad(_camEyeRot[2]), context->config->private.view);
+    glm_rotate_x(context->config->private.view, glm_rad(camEyeRot_p[0]), context->config->private.view);
+    glm_rotate_y(context->config->private.view, glm_rad(camEyeRot_p[1]), context->config->private.view);
+    glm_rotate_z(context->config->private.view, glm_rad(camEyeRot_p[2]), context->config->private.view);
 
+
+    // TODO: These are the same for both platforms.
+    // TODO: Update projection matrix only once or on request.
+    // TODO: Consider only updating view matrix when .SetCamera is called.
 #ifdef VITA
     glm_perspective(90.0f, 
         (float)context->config->game_window_width / (float)context->config->game_window_height, 
@@ -373,23 +345,32 @@ void _VGL3D_UpdateViewProjection(SELF, mat4* oModelMat) {
 #endif
 }
 
-void _VGL3D_MakeDefaultViewProjection(SELF) {
-    _VGL3D_UpdateViewProjection(context, NULL);
-}
-
-int _VGL3D_InitShading(SELF, const char* vPath, const char* fPath) {
+/**
+ * @brief Initializes the shading system given a vertex shader path and a frag shader path.
+ * 
+ * Creates the program, attaches the shaders, bind attrib locations, link program.
+ * Sets context->config->private.curShaderID to the created full shading program.
+ * 
+ * @param vPath 
+ * @param fPath 
+ * @return int Returns 0 on success, -1 or other for error.
+ */
+int VGL3D_InitShading_private(SELF, const char* vPath, const char* fPath) {
     context->Log(context, "Init Shading!\n");
 
-    context->Log(context, "Loading vertex shader from '%s'..\n", vPath);
-    GLuint vertShaderID = _VGL3D_LoadShader(context, GL_VERTEX_SHADER, vPath);
+    // Load vertex shader. Check for errors.
+    GLuint vertShaderID = VGL3D_LoadShader_private(context, GL_VERTEX_SHADER, vPath);
     CHECK_GL_ERROR(context, "Vertex Shader");
 
-    GLuint fragShaderID = _VGL3D_LoadShader(context, GL_FRAGMENT_SHADER, fPath);
+    // Load frag shader. Check for errors.
+    GLuint fragShaderID = VGL3D_LoadShader_private(context, GL_FRAGMENT_SHADER, fPath);
     CHECK_GL_ERROR(context, "Fragment Shader");
 
+    // Early return if we've failed to load one or the other.
     if(vertShaderID == 0 || fragShaderID == 0)
         return -1;
 
+    // Create program and attach shaders.
     GLuint programID = glCreateProgram();
     CHECK_GL_ERROR(context, "Create Program");
     glAttachShader(programID, vertShaderID);
@@ -401,8 +382,11 @@ int _VGL3D_InitShading(SELF, const char* vPath, const char* fPath) {
     glBindAttribLocation(programID, 0, "vPosition");
     glBindAttribLocation(programID, 1, "vTexCoord");
 
+    // Link program.
     glLinkProgram(programID);
     CHECK_GL_ERROR(context, "Linking Program");
+
+    // Check for errors.
     GLint linked;
     glGetProgramiv(programID, GL_LINK_STATUS, &linked);
     if(!linked)
@@ -413,13 +397,13 @@ int _VGL3D_InitShading(SELF, const char* vPath, const char* fPath) {
 
     // Grab indexes and everything else.
     context->Log(context, "DONE Init Shading!\n");
-
     context->config->private.curShaderID = programID;
 
     return 0;
 }
 
-uint16_t _quad_indices[] = 
+// Quad indices. Indices from quad_vertices_packed_private
+static uint16_t quad_indices_private[] = 
 {
     0,1,2,
     0,2,3
@@ -427,7 +411,7 @@ uint16_t _quad_indices[] =
 
 // Interleaved vertex data.
 #define VGL_COMPONENTS_PER_VERTEX 5
-GLfloat _quad_vertices_packed[] =
+static GLfloat quad_vertices_packed_private[] =
 {
     // bottom left
     //    Vert Pos      |   Tex Coords
@@ -444,7 +428,11 @@ GLfloat _quad_vertices_packed[] =
     0.5f, -0.5, 1.0f, 1.0f, 1.0f,
 };
 
-
+/**
+ * @brief Destroys a texture handle.
+ * 
+ * @param texToDestroy The texture handle to free/destroy.
+ */
 void VGL3D_DestroyTexture (SELF, VTEX texToDestroy) {
     if(texToDestroy == 0)
     {
@@ -458,6 +446,13 @@ void VGL3D_DestroyTexture (SELF, VTEX texToDestroy) {
     context->Log(context, "Destroyed texture with ID %u", texToDestroy);
 }
 
+/**
+ * @brief Destroys the backend.
+ * Calls GL free functions.
+ * Deletes vertex buffers and shaders.
+ * Terminates glfw on PC.
+ * Terminates vitaGL on Vita.
+ */
 void VGL3D_DestroyBackend(SELF) {
     context->Log(context, "Destroy Backend.");
 
@@ -480,6 +475,10 @@ void VGL3D_DestroyBackend(SELF) {
     
 }
 
+/**
+ * @brief Actually destroys the VGL3DContext structure.
+ * Calls free on context->config.
+ */
 void VGL3D_DestroySelf(SELF) {
     context->Log(context, "Destroy self. (internal config malloced)");
 
@@ -491,6 +490,19 @@ void VGL3D_DestroySelf(SELF) {
     }
 }
 
+/**
+ * @brief Initializes the rendering backend.
+ * For vgl3d_gl2es, this is OpenGL 2.0ES/vitaGL.
+ * This is a fairly hefty function:
+ * 1. Initializes vitaGL or glfw/glew on PC.
+ * 2. Initializes shading system and loads default shaders per platform.
+ *      CG shaders for Vita, GLSL for desktop.
+ * 3. Updates the view/projection matrix.
+ * 4. Enables gl stuff. generates VBO. Buffers the identity quad to the GPU.
+ * (OS X ONLY): Wiggles the window to properly set size.
+ * 
+ * @return int Returns 0 on success, -1 or other on failure. Afterwards, the context is fully ready to use.
+ */
 int VGL3D_InitBackend(SELF) {
 #ifdef VITA // vitaGL initialization.
     vglInit(0x800000);
@@ -529,22 +541,23 @@ int VGL3D_InitBackend(SELF) {
 
     // Initialize shading.
     // TODO: Configuration for this? Paths for built in shader? Or bundle these into the renderer?
-    #ifdef VITA
-        const char* vert_path = "app0:vert_new.cgv";
-        const char* frag_path = "app0:frag_new.cgf";
-        context->Log(context, "vert shader path: '%s'\n", vert_path);
-        context->Log(context, "frag shader path: '%s'\n", frag_path);
-        int shadingVal = _VGL3D_InitShading(context, vert_path, frag_path);
-    #else
-        int shadingVal = _VGL3D_InitShading(context, "../vert_new.glsl", "../frag_new.glsl");
-    #endif
+#ifdef VITA
+    const char* vert_path = "app0:vert_new.cgv";
+    const char* frag_path = "app0:frag_new.cgf";
+    context->Log(context, "vert shader path: '%s'\n", vert_path);
+    context->Log(context, "frag shader path: '%s'\n", frag_path);
+    int shadingVal = VGL3D_InitShading_private(context, vert_path, frag_path);
+#else
+    int shadingVal = VGL3D_InitShading_private(context, "../vert_new.glsl", "../frag_new.glsl");
+#endif
+
     if(shadingVal != 0)
     {
         context->Log(context, "Rval from Shading: %d\n", shadingVal);
         return -1;
     }
 
-    _VGL3D_MakeDefaultViewProjection(context);
+    VGL3D_UpdateViewProjection_private(context, NULL);
 
     // TODO: VGL3D_SetClearColor
     // TODO: VGL3D_SetDepthFunc
@@ -567,7 +580,7 @@ int VGL3D_InitBackend(SELF) {
     glBindBuffer(GL_ARRAY_BUFFER, context->config->private.vbo);
 
     // Buffer the initial data.
-    glBufferData(GL_ARRAY_BUFFER, (sizeof(float) * VGL_COMPONENTS_PER_VERTEX) * 4, _quad_vertices_packed, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, (sizeof(float) * VGL_COMPONENTS_PER_VERTEX) * 4, quad_vertices_packed_private, GL_STATIC_DRAW);
 
 #ifdef __APPLE__
     // Wiggle the window so glfw gets the correct position upon opening.
@@ -596,7 +609,7 @@ GLfloat _quad_vertices[] =
 };
 
 /*
-GLfloat _quad_vertices_packed[] =
+GLfloat quad_vertices_packed_private[] =
 {
     // bottom left
     // x     y      z     u     v
@@ -620,7 +633,18 @@ GLfloat _quad_vertices_h[] =
     0.5f, -0.5f, 1.0f,  // bottom right
 };
 
-
+/**
+ * @brief Draws a quad given pos, rot, scale, and rgba.
+ * This will build a model matrix given the arguments and send it to the GPU.
+ * Calls glDrawElements to draw a quad given a VBO.
+ * 
+ * @param x     x position of the first vertex
+ * @param y     y position of the first vertex
+ * @param z     z position of the first vertex
+ * @param rot   rotation of the quad.
+ * @param scale scale of the quad.
+ * @param rgba  color of the quad (not per vertex coloring.)
+ */
 void VGL3D_DrawQuad(
     SELF,
     float x, 
@@ -651,7 +675,7 @@ void VGL3D_DrawQuad(
     #endif
 
     // Build mvp with newly created model matrix.
-    _VGL3D_UpdateViewProjection(context, &model);
+    VGL3D_UpdateViewProjection_private(context, &model);
 
     // Enable shit...again wasteful for now.
     int vPosLoc = 0;
@@ -695,18 +719,28 @@ void VGL3D_DrawQuad(
     // glVertexPointer(3, GL_FLOAT, 0, 0);
 
     // Actually finally draw something to the screen.
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, _quad_indices);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, quad_indices_private);
     // glDrawArrays(GL_TRIANGLES, 0, 6);
     CHECK_GL_ERROR(context, "glDrawElements");
     glDisableVertexAttribArray(vPosLoc);
     glDisableVertexAttribArray(vTexCoordLoc);
 }
 
+/**
+ * @brief Sets the screen clear color.
+ * 
+ * @param rgba 
+ */
 void VGL3D_SetClearColor(SELF, vec4 rgba)
 {
     glClearColor(rgba[0], rgba[1], rgba[2], rgba[3]);
 }
 
+/**
+ * @brief Clears the depth buffer and color buffer. 
+ * (Clears the screen)
+ * 
+ */
 void VGL3D_Clear(SELF)
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
