@@ -1,0 +1,36 @@
+void main(
+    float3 vPosition,
+    float2 vTexCoord,
+    uniform float4 vColor,
+    uniform float4x4 _model,
+    uniform float4x4 _view,
+    uniform float4x4 _projection,
+    float4 out vertPos : POSITION,
+    float4 out fragColor : COLOR,
+    float2 out texCoord : TEXCOORD0
+)
+{
+    //vertPos = mul(float4(vPosition, 1.f), _mvp);
+    //vertPos = mul(_mvp, float4(vPosition, 1.f));
+
+    /* One way
+    float4x4 posMod = _model;
+    float4x4 posModView = mul(posMod, _view);
+    float4x4 posModViewProj = mul(posModView, _projection);
+
+    vertPos = mul(float4(vPosition, 1.f), posModViewProj);
+    */
+
+    //float4 mvPosition = mul(mul(float4(vPosition, 1.0f), _model), _view);
+    //vertPos = mul(mvPosition, _projection);
+
+    //vertPos = mul(mul(mul(float4(vPosition, 1.0f), _model), _view), _projection);
+    //vertPos = mul(mul(float4(vPosition, 1.0f), _model), _view);
+
+    vertPos = mul(mul(mul(float4(vPosition, 1.0f), _model), _view), _projection);
+
+
+
+    fragColor = vColor;
+    texCoord = vTexCoord;
+}

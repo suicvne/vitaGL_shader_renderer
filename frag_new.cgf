@@ -1,0 +1,26 @@
+
+// Fragment shaders need to translate
+// `gl_FragColor = x;` calls to `return x;` calls
+// Main returns a float4 (vec4)
+// The input color needs to have : COLOR attribute.
+// The input texCoord needs to have : TEXCOORD0 attribute.
+// Use int instead of bool.
+// The function main needs to have `: COLOR` attribute on it.
+
+float4 main(
+    float4 fragColor : COLOR,       // varying vec4 fragColor;
+    float2 texCoord : TEXCOORD0,    // varying vec2 texCoord;
+    uniform sampler2D ourTexture,   // uniform sampler2D ourTexture;
+    uniform int useTexture          // uniform bool useTexture;
+) : COLOR
+{
+    // if(useTexture)
+        // gl_FragColor = texture2D(ourTexture, texCoord) * fragColor;
+    // else
+        // gl_FragColor = fragColor;
+        
+    if(useTexture == 1)
+        return tex2D(ourTexture, texCoord) * fragColor;
+    else
+        return fragColor;
+}
