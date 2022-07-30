@@ -1,5 +1,4 @@
 #include "tesla_input.h"
-
 #include <psp2/ctrl.h>
 
 typedef struct _TeslaGamepadPrivate {

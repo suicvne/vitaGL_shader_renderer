@@ -1,6 +1,10 @@
 #ifndef __COMMON_FUNCTIONS_H__
 #define __COMMON_FUNCTIONS_H__
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
+
 #define CREATE_LOG_FN(SELF_TYPEDEF, FN_PREFIX, LOG_PREFIX)\
 static inline void FN_PREFIX##_Log(SELF_TYPEDEF, const char *fmt, ...){\
     char buffer[2048];\

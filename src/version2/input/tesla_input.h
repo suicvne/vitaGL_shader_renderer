@@ -1,7 +1,7 @@
 #ifndef __TESLA_INPUT_H__
 #define __TESLA_INPUT_H__
 
-#include "common.h"
+#include "../common.h"
 
 /**
  * @brief Project Tesla Gamepad Input API.
