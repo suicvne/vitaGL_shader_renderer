@@ -15,7 +15,8 @@ struct _Mesh TestMesh_Create();
 int TestMesh_InitWithVertices(SELF, const Vertex* allocatedVertexData, size_t vertexCount);
 int TestMesh_InitWithDefaultCube(SELF);
 void TestMesh_DestroySelf(SELF);
-void TestMesh_DrawSlow(SELF, VGL3DContext* graphics);
+void TestMesh_Draw(SELF, VGL3DContext* graphics);
+void TestMesh_DrawTranslate(SELF, VGL3DContext* graphics, vec3 pos, vec3 rot, vec3 scale);
 
 typedef struct _Mesh {
 
@@ -23,10 +24,11 @@ typedef struct _Mesh {
     int (*InitWithDefaultCube)(SELF);
     void (*DestroySelf)(SELF);
     void (*Draw)(SELF, VGL3DContext* graphics);
+    void (*DrawTranslate)(SELF, VGL3DContext* graphics, vec3 pos, vec3 rot, vec3 scale);
 
-    Vertex* pVertices;
-    size_t  pNumVertices;
-    uint8_t   pHasChanged;
+    Vertex*     pVertices;
+    size_t      pNumVertices;
+    uint8_t     pHasChanged;
 
     C_PRIVATE_BEGIN(TestMesh)
     uint32_t MeshGpuHandle;

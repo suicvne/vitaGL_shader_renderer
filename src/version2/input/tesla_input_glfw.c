@@ -104,7 +104,7 @@ void TKdb_PollInput_glfw(SELF) {
             if(Tkdb_private_LastKbdCtx->PrivateData->lastKeys[i] == GLFW_PRESS && 
                 Tkdb_private_LastKbdCtx->PrivateData->keys[i] == GLFW_PRESS)
             {
-                context->Log(context, "REPEATING!!!! LastKeys_p[i] %d", Tkdb_private_LastKbdCtx->PrivateData->lastKeys[i]);
+                // Repeating.
                 Tkdb_private_LastKbdCtx->PrivateData->keys[i] = GLFW_REPEAT;
             }
         }

@@ -122,13 +122,64 @@ void DrawCube(VGL3DContext* context, vec3 pos) {
         );
 }
 
-void CheckInput_keyboard(TeslaKeyboardInput* kbdInput) {
-    if(kbdInput->IsKeyHeld(kbdInput, GLFW_KEY_SPACE)) {
-        doSpin = 1;
-        // kbdInput->Log(kbdInput, "Keydown");
-        // doSpin = !doSpin;
+void PrintCurProjectionType(VGL3DContext* graphics) {
+    char* projTypeStr = NULL;
+
+    #define PROJ_MAT_PROP_CASE(ENMV, STORAGE)\
+    case (ENMV): STORAGE = #ENMV;break;\
+
+    switch(graphics->private.projectionMatrixType) {
+        PROJ_MAT_PROP_CASE(VGL3D_PROJECTION_ORTHOGRAPHIC, projTypeStr)
+        PROJ_MAT_PROP_CASE(VGL3D_PROJECTION_PERSPECTIVE, projTypeStr)
+        PROJ_MAT_PROP_CASE(VGL3D_PROJECTION_IDENTITY, projTypeStr)
+        default: projTypeStr = "VGL3D_PROJECTION_UNKNOWN";
     }
-    else doSpin = 0;
+
+    graphics->Log(graphics, "New Projection Type: %s (%d)\n", projTypeStr, graphics->private.projectionMatrixType);
+
+    #undef PROJ_MAT_PROP_CASE
+}
+
+void SetCamForProjType(VGL3DContext* graphics) {
+
+    const vec3 defaultPerspPos = {0.0f, 0.0f, -10.0f};
+    const vec3 defaultPerspRot = { -30.0f, 0.0f, 0.0f };
+
+    switch(graphics->private.projectionMatrixType) {
+        case VGL3D_PROJECTION_PERSPECTIVE:
+            graphics->SetCamera(graphics, (float*)defaultPerspPos, (float*)defaultPerspRot);
+            break;
+        case VGL3D_PROJECTION_ORTHOGRAPHIC:
+        case VGL3D_PROJECTION_IDENTITY:
+        default:
+            graphics->SetCamera(graphics, (vec3){0.0f, 0.0f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f});        
+            break;
+    }
+}
+
+void CheckInput_keyboard(TeslaKeyboardInput* kbdInput, VGL3DContext* graphics) {
+
+    // Spin Model 
+    if(kbdInput->IsKeyHeld(kbdInput, GLFW_KEY_SPACE))
+        doSpin = 1;
+    else
+        doSpin = 0;
+
+    // Switch Projection Type.
+    if(kbdInput->IsKeyDown(kbdInput, GLFW_KEY_P)) {
+
+        // Increment
+        VGL3D_ProjectionMatType nextType = graphics->private.projectionMatrixType+1;
+        if(nextType == VGL3D_PROJECTION_LAST) nextType = VGL3D_PROJECTION_IDENTITY;
+
+        graphics->SetProjectionType(graphics, nextType);
+        PrintCurProjectionType(graphics);
+    }
+
+    // Move x/z
+    if(kbdInput->IsKeyHeld(kbdInput, GLFW_KEY_UP)) {
+        
+    }
 }
 
 void Test_CubeTest(VGL3DContext* graphics, VTEX thisTex) {
@@ -143,10 +194,47 @@ void Test_CubeTest(VGL3DContext* graphics, VTEX thisTex) {
     }
 }
 
+void Test_PerspectiveSwap_Update(VGL3DContext* graphics, VTEX thisTex) {
+    
+}
+
 static TeslaMesh DefaultCube;
+void Test_PerspectiveSwap(VGL3DContext* graphics, VTEX thisTex) {
+    
+    /*
+    // TODO: Do something about this >.> 
+    // Add some getter functions or something.
+    const float w = 960.f;
+    const float h = 544.f;
+
+    // Render orthographic background.
+    graphics->SetProjectionType(graphics, VGL3D_PROJECTION_ORTHOGRAPHIC);
+    SetCamForProjType(graphics);
+    graphics->BindTexture(graphics, thisTex);
+    graphics->DrawQuad(
+        graphics, 
+        0.f,0.f,0.f, 
+        (vec3){0.f,0.f,0.f}, 
+        (vec3){w, h, 1.f},
+        (vec4){1.f,1.f,1.f,1.f}
+    );
+    */
+    
+    // Render Other tests on top.
+    
+    graphics->SetProjectionType(graphics, VGL3D_PROJECTION_PERSPECTIVE);
+    // SetCamForProjType(graphics);
+    
+    // Test_CubeTest(graphics, thisTex);
+    DefaultCube.Draw(&DefaultCube, graphics);
+
+    // doUpdate(graphics, 1 / 120.f);
+}
+
 
 void Test_MeshTest(VGL3DContext* graphics) {
-    
+    // TODO: Try loading an stl or obj or something.
+    // gltf????
 }
 
 int main() {
@@ -163,12 +251,13 @@ int main() {
 
     graphics.InitBackend(&graphics);
     graphics.Log(&graphics, "LOGS TEST! %d", 69);
+    graphics.SetProjectionType(&graphics, VGL3D_PROJECTION_PERSPECTIVE);
 
     VTEX thisTex = graphics.LoadTextureAt(&graphics, VITA_EXAMPLE_TEXTURE);
 
     GLFWwindow* glfwWin = graphics.GetGlfwWindow(&graphics);
     TeslaKeyboardInput keyboard = TKbd_Create();
-    keyboard.InitBackend(&keyboard, glfwWin);
+    keyboard.InitBackend(&keyboard, (struct _GLFWwindow*)glfwWin);
 
     // Test
     DefaultCube = TestMesh_Create();
@@ -179,27 +268,26 @@ int main() {
     doUpdate(&graphics, 1 / 240.f);
     while(graphics.private.doContinue)
     {
+        /* =========== Update ============ */
         keyboard.PollInput(&keyboard);
-        CheckInput_keyboard(&keyboard);
+        CheckInput_keyboard(&keyboard, &graphics);
 
         // Update. TODO: actual time keeping
         doUpdate(&graphics, 1 / 240.f);
+        /* ========= End Update =========== */
 
-        /*graphics.SetCamera(&graphics, 
-            (vec3) {
-                10.0f, 5.0f, -10.0f
-            },
-            (vec3) {
-                0.f, 45.f, 0.f
-            }
-        );*/
-
+        /* =========== Graphics ============= */
         graphics.Clear(&graphics);
         graphics.Begin(&graphics);
         
-        DefaultCube.Draw(&DefaultCube, &graphics);
+        // DefaultCube.Draw(&DefaultCube, &graphics);
+        // Test_CubeTest(&graphics, thisTex);
+        Test_PerspectiveSwap(&graphics, thisTex);
+
+        // Draw other shit here.
 
         graphics.End(&graphics);
+        /* ========= End Graphics =========== */
     }
 
     // Free mesh resources that we allocated.

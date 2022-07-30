@@ -17,7 +17,7 @@
  *      - current view matrix
  *      - current projection matrix
  *      - (NOT USED) completed MVP.
- *      - The default quad vbo handle.
+ *      - The default quad quadVbo handle.
  *      - The default shader program handle.
  */
 typedef struct _VGL3DConfig {
@@ -34,7 +34,7 @@ typedef struct _VGL3DConfig {
     mat4 view;
     mat4 proj;
     mat4 cpu_mvp;
-    GLuint vbo;
+    GLuint quadVbo;
     GLuint curShaderID;
 
     C_PRIVATE_END
@@ -69,27 +69,30 @@ inline VGL3DContext VGL3D_Create()
 {
     // TODO: libGimbal'fy? 
     VGL3DContext newContext = (VGL3DContext) {
-        .config =                  malloc(sizeof(VGL3DConfig)),
-        .Begin =                   VGL3D_Begin,
-        .End =                     VGL3D_End,
-        .DrawQuad =                VGL3D_DrawQuad,
-        .DrawFromVBO =             VGL3D_DrawFromVBO,
-        .InitBackend =             VGL3D_InitBackend,
-        .Log =                     VGL3D_Log,
-        .SetClearColor =           VGL3D_SetClearColor,
-        .Clear =                   VGL3D_Clear,
-        .SetCamera =               VGL3D_SetCamera,
-        .LoadTextureAt =           VGL3D_LoadAndCreateGLTexture_private,
-        .BindTexture =             VGL3D_BindTexture,
-        .DestroyBackend =          VGL3D_DestroyBackend,
-        .DestroySelf =             VGL3D_DestroySelf,
-        .DestroyTexture =          VGL3D_DestroyTexture,
-        .GetGlfwWindow =           VGL3D_GetGlfwWindow_glfw,
-        .CreateVBOWithVertexData = VGL3D_CreateVBOWithVertexData,
+        .config =                   malloc(sizeof(VGL3DConfig)),
+        .Begin =                    VGL3D_Begin,
+        .End =                      VGL3D_End,
+        .DrawQuad =                 VGL3D_DrawQuad,
+        .DrawFromVBO =              VGL3D_DrawFromVBO,
+        .InitBackend =              VGL3D_InitBackend,
+        .Log =                      VGL3D_Log,
+        .SetClearColor =            VGL3D_SetClearColor,
+        .Clear =                    VGL3D_Clear,
+        .SetCamera =                VGL3D_SetCamera,
+        .LoadTextureAt =            VGL3D_LoadAndCreateGLTexture_private,
+        .BindTexture =              VGL3D_BindTexture,
+        .DestroyBackend =           VGL3D_DestroyBackend,
+        .DestroySelf =              VGL3D_DestroySelf,
+        .DestroyTexture =           VGL3D_DestroyTexture,
+        .GetGlfwWindow =            VGL3D_GetGlfwWindow_glfw,
+        .CreateVBOWithVertexData =  VGL3D_CreateVBOWithVertexData,
+        .SetProjectionType =        VGL3D_SetProjectionType,
+        .DrawFromVBOTranslation =   VGL3D_DrawFromVBOTranslation,
         .private = {
             .curBoundTex = 0,
             .drawingInProgress = 0,
-            .doContinue = 1
+            .doContinue = 1,
+            .projectionMatrixType = VGL3D_PROJECTION_IDENTITY
         }
     };
 
@@ -331,20 +334,36 @@ void VGL3D_UpdateViewProjection_private(SELF, mat4* oModelMat) {
         (vec3){0.0f, 1.0f, 0.0f},  // Up axis.
         context->config->private.view
     );
+
+    // x, y, z rotation from camEyeRot_p
     glm_rotate_x(context->config->private.view, glm_rad(camEyeRot_p[0]), context->config->private.view);
     glm_rotate_y(context->config->private.view, glm_rad(camEyeRot_p[1]), context->config->private.view);
     glm_rotate_z(context->config->private.view, glm_rad(camEyeRot_p[2]), context->config->private.view);
 
 
-    // TODO: These are the same for both platforms.
-    // TODO: Update projection matrix only once or on request.
-    // TODO: Consider only updating view matrix when .SetCamera is called.
-    // Projection
-    glm_perspective(glm_rad(45.0f), 
-        (float)context->config->game_window_width / (float)context->config->game_window_height, 
-        0.1f, 10000.0f, 
-        context->config->private.proj
-    );
+    switch(context->private.projectionMatrixType) {
+        case VGL3D_PROJECTION_ORTHOGRAPHIC:
+            glm_ortho(
+                (float)context->config->game_window_width / 2.f, 
+                (float)-(context->config->game_window_width / 2.f), 
+                (float)-(context->config->game_window_height / 2.f), 
+                (float)context->config->game_window_height / 2.f, 
+                0.1f, 10000.0f, context->config->private.proj
+            );
+            break;
+        case VGL3D_PROJECTION_PERSPECTIVE:
+            glm_perspective(
+                glm_rad(45.0f), 
+                (float)context->config->game_window_width / (float)context->config->game_window_height, 
+                0.1f, 10000.0f, 
+                context->config->private.proj
+            );
+            break;
+        case VGL3D_PROJECTION_IDENTITY:
+        default:
+            glm_mat4_identity(context->config->private.proj);
+            break;
+    }
 }
 
 /**
@@ -459,7 +478,7 @@ void VGL3D_DestroyBackend(SELF) {
     context->Log(context, "Destroy Backend.");
 
     // Free OpenGL resources.
-    glDeleteBuffers(1, &context->config->private.vbo);
+    glDeleteBuffers(1, &context->config->private.quadVbo);
     CHECK_GL_ERROR(context, "glDeleteTextures");
 
     // Destroy shader
@@ -571,15 +590,16 @@ int VGL3D_InitBackend(SELF) {
     glEnable(GL_TEXTURE_2D);
     glEnable(GL_BLEND);
     glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_ALWAYS);
     glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     glViewport(0,0,960,544);
 
-    // Generate vbo
-    glGenBuffers(1, &context->config->private.vbo);
+    // Generate quadVbo
+    glGenBuffers(1, &context->config->private.quadVbo);
 
-    // Bind vbo
-    glBindBuffer(GL_ARRAY_BUFFER, context->config->private.vbo);
+    // Bind quadVbo
+    glBindBuffer(GL_ARRAY_BUFFER, context->config->private.quadVbo);
 
     // Buffer the initial data.
     glBufferData(GL_ARRAY_BUFFER, (sizeof(float) * VGL_COMPONENTS_PER_VERTEX) * 4, quad_vertices_packed_private, GL_STATIC_DRAW);
@@ -596,8 +616,8 @@ int VGL3D_InitBackend(SELF) {
     // Use shader
     glUseProgram(context->config->private.curShaderID);
 
-    // Bind vbo
-    glBindBuffer(GL_ARRAY_BUFFER, context->config->private.vbo);
+    // Bind quadVbo
+    glBindBuffer(GL_ARRAY_BUFFER, context->config->private.quadVbo);
 
     return 0;
 }
@@ -635,7 +655,7 @@ GLfloat _quad_vertices_h[] =
     0.5f, -0.5f, 1.0f,  // bottom right
 };
 
-static inline void VGL3D_private_InitializeDefaultVertexAttribs(SELF, mat4* modelMat) {
+static inline void VGL3D_private_InitializeDefaultVertexAttribs(SELF, mat4* modelMat, vec4 rgba) {
     // Enable shit...again wasteful for now.
     int vPosLoc = 0;
     int vColorLoc;
@@ -655,7 +675,7 @@ static inline void VGL3D_private_InitializeDefaultVertexAttribs(SELF, mat4* mode
 
         // Color data/use texture flag.
         vColorLoc = glGetUniformLocation(context->config->private.curShaderID, "vColor"); // TODO: Interpolate into vertex data.
-        glUniform4fv(vColorLoc, 1, (vec4){ 0.75f, 0.55f, 0.25f, 1.0f });
+        glUniform4fv(vColorLoc, 1, rgba);
         int fUseTexture = glGetUniformLocation(context->config->private.curShaderID, "useTexture");
         glUniform1i(fUseTexture, (context->private.curBoundTex != 0));
 
@@ -714,20 +734,19 @@ void VGL3D_DrawQuad(
     glm_scale(model, scale);
     #endif
 
+    // glBindBuffer -> default quad 
+    glBindBuffer(GL_ARRAY_BUFFER, context->config->private.quadVbo);
+    CHECK_GL_ERROR(context, "glBindBuffer -> quadVbo");
+
     // Build mvp with newly created model matrix.
     VGL3D_UpdateViewProjection_private(context, &model);
 
     // Initialize default vertex attribs.
-    VGL3D_private_InitializeDefaultVertexAttribs(context, &model);
+    VGL3D_private_InitializeDefaultVertexAttribs(context, &model, rgba);
 
     // Actually finally draw something to the screen.
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, quad_indices_private);
     CHECK_GL_ERROR(context, "glDrawElements");
-    
-    
-    
-    // glDisableVertexAttribArray(vPosLoc);
-    // glDisableVertexAttribArray(vTexCoordLoc);
 }
 
 /**
@@ -772,13 +791,44 @@ void VGL3D_DrawFromVBO(SELF, uint32_t vboHandle, size_t nVertices) {
 
     mat4 model = GLM_MAT4_IDENTITY_INIT;
     const float scale = 0.5f;
+    const vec4 white = (const vec4){1.0f, 1.0, 1.0f, 1.0f};
     glm_scale(model, (vec3){scale,scale,scale});
 
     VGL3D_UpdateViewProjection_private(context, &model);
 
     glBindBuffer(GL_ARRAY_BUFFER, vboHandle);
-    VGL3D_private_InitializeDefaultVertexAttribs(context, &model);
+    VGL3D_private_InitializeDefaultVertexAttribs(context, &model, (float*)white);
     glDrawArrays(GL_TRIANGLES, 0, nVertices);
+}
+
+void VGL3D_DrawFromVBOTranslation(SELF, uint32_t vboHandle, size_t nVertices, vec3 pos, vec3 rot, vec3 scale) {
+
+    mat4 model = GLM_MAT4_IDENTITY_INIT;
+    const vec4 white = (const vec4){1.0f, 1.0, 1.0f, 1.0f};
+    // TRS -> Translate, Rotate, Scale
+    glm_translate(model, pos);
+    glm_rotate_x(model, rot[0], model);
+    glm_rotate_y(model, rot[1], model);
+    glm_rotate_z(model, rot[2], model);
+    glm_scale(model, scale);
+
+    VGL3D_UpdateViewProjection_private(context, &model);
+
+    glBindBuffer(GL_ARRAY_BUFFER, vboHandle);
+    VGL3D_private_InitializeDefaultVertexAttribs(context, &model, (float*)white);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, nVertices);
+}
+
+void VGL3D_VBOBuffer(SELF, uint32_t vboHandle, const float* vertexData, size_t nVertices) {
+
+    const size_t totalBufferSize = (sizeof(float) * VGL_COMPONENTS_PER_VERTEX) * nVertices;
+    context->Log(context, "Vbo Handle %u is getting re-buffered with %u bytes of data.", vboHandle, totalBufferSize);
+
+    glBindBuffer(GL_ARRAY_BUFFER, vboHandle);
+    CHECK_GL_ERROR(context, "VGL3D_VBOBuffer/glBindBuffer");
+
+    glBufferData(GL_ARRAY_BUFFER, totalBufferSize, vertexData, GL_STATIC_DRAW);
+    CHECK_GL_ERROR(context, "VGL3D_VBOBuffer/glBufferData");
 }
 
 // =========== Concrete Implementations for OpenGL ES 2.0 Renderer =============

@@ -43,6 +43,16 @@ extern "C" {
 #define SELF struct _VGL3D* context
 #endif
 
+/**
+ * @brief An enumeration to describe the available projection matrix types.
+ */
+typedef enum {
+    VGL3D_PROJECTION_IDENTITY,
+    VGL3D_PROJECTION_ORTHOGRAPHIC,
+    VGL3D_PROJECTION_PERSPECTIVE,
+    VGL3D_PROJECTION_LAST,
+} VGL3D_ProjectionMatType;
+
 // Forward declare per platform configuration structure.
 struct _VGL3DConfig;
 
@@ -71,7 +81,10 @@ typedef struct _VGL3D {
     void        (*DestroyBackend)(SELF);
     void        (*DestroySelf)(SELF);
     void        (*DrawFromVBO)(SELF, uint32_t vboHandle, size_t nVertices);
+    void        (*DrawFromVBOTranslation)(SELF, uint32_t vboHandle, size_t nVertices, vec3 pos, vec3 rot, vec3 scale);
     uint32_t    (*CreateVBOWithVertexData)(SELF, const float* vertexData, size_t nVertices);
+    int         (*VBOBuffer)(SELF, uint32_t vboHandle, const float* vertexData, size_t nVertices);
+    void        (*SetProjectionType)(SELF, VGL3D_ProjectionMatType newMatType);
     // TODO: Function to re-buffer data to existing VBO.
 
 // TODO: Properly check for GLFW
@@ -84,9 +97,10 @@ typedef struct _VGL3D {
 
     // 'private' data that someone could still fuck with if they wanted to.
     C_PRIVATE_BEGIN(VGL3D)
-    uint8_t drawingInProgress;
-    uint8_t doContinue;
-    VTEX    curBoundTex;
+    uint8_t                     drawingInProgress;
+    uint8_t                     doContinue;
+    VTEX                        curBoundTex;
+    VGL3D_ProjectionMatType     projectionMatrixType;
     C_PRIVATE_END;
 
 } VGL3DContext;
@@ -105,6 +119,11 @@ typedef struct _VGL3D {
  */
 CREATE_LOG_FN(SELF, VGL3D, "VGL3D Logs");
 
+static inline void VGL3D_SetProjectionType(SELF, VGL3D_ProjectionMatType newMatType) {
+    context->private.projectionMatrixType = newMatType;
+    // TODO: Do I need to update MVP here?
+}
+
 // ------------------------------ Default/reference function signatures. ------------------------------ 
 VGL3DContext    VGL3D_Create();
 void            VGL3D_Begin(SELF);
@@ -121,6 +140,8 @@ void            VGL3D_DestroyBackend(SELF);
 void            VGL3D_DestroySelf(SELF);
 void            VGL3D_DrawFromVBO(SELF, uint32_t vboHandle, size_t nVertices);
 uint32_t        VGL3D_CreateVBOWithVertexData(SELF, const float* packedVertexData, size_t nVertices);
+void            VGL3D_VBOBuffer(SELF, uint32_t vboHandle, const float* vertexData, size_t nVertices);
+void            VGL3D_DrawFromVBOTranslation(SELF, uint32_t vboHandle, size_t nVertices, vec3 pos, vec3 rot, vec3 scale);
 // ------------------------------ Default/reference function signatures. ------------------------------ 
 
 #undef SELF
