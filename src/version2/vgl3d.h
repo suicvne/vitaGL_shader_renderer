@@ -34,12 +34,10 @@ extern "C" {
 #define VTEX GLuint
 #endif
 
+#include "common.h"
 #include <stdarg.h>
 #include <cglm/cglm.h>
 #include <cglm/clipspace/ortho_lh_zo.h>
-
-#define C_PRIVATE_BEGIN(N)  struct N##_private {
-#define C_PRIVATE_END       } private;
 
 #ifndef SELF
 #define SELF struct _VGL3D* context
@@ -88,7 +86,6 @@ typedef struct _VGL3D {
 #undef SELF
 
 #define SELF VGL3DContext* context
-
 /**
  * @brief Default VGL3D log function.
  * Behaves like printf. 
@@ -98,15 +95,7 @@ typedef struct _VGL3D {
  * @param fmt       Format string.
  * @param ...       va args to fill in the format string.
  */
-static inline void VGL3D_Log(SELF, const char *fmt, ...)
-{
-    char buffer[2048];
-    va_list args;
-    va_start(args, fmt);
-    vsnprintf(buffer, 2048, fmt, args);
-    printf("[VGL3DLog] %s\n", buffer);
-    va_end(args);
-}
+CREATE_LOG_FN(SELF, VGL3D, "VGL3D Logs");
 
 // ------------------------------ Default/reference function signatures. ------------------------------ 
 VGL3DContext    VGL3D_Create();

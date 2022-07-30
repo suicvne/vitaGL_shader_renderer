@@ -63,6 +63,7 @@ vec3 camEyeRot_p = {0.0f, 0.0f, 0.0f};
  */
 inline VGL3DContext VGL3D_Create()
 {
+    // TODO: libGimbal'fy? 
     VGL3DContext newContext = (VGL3DContext) {
         .config =           malloc(sizeof(VGL3DConfig)),
         .Begin =            VGL3D_Begin,
@@ -91,8 +92,6 @@ inline VGL3DContext VGL3D_Create()
 #ifndef VITA
     // Only makes sense to set this on the desktop.
     newContext.config->game_window_title = "VGL3D_GL2ES";
-#else
-    newContext.config->game_window_title = NULL;
 #endif
 
     return newContext;
@@ -329,20 +328,12 @@ void VGL3D_UpdateViewProjection_private(SELF, mat4* oModelMat) {
     // TODO: These are the same for both platforms.
     // TODO: Update projection matrix only once or on request.
     // TODO: Consider only updating view matrix when .SetCamera is called.
-#ifdef VITA
-    glm_perspective(90.0f, 
-        (float)context->config->game_window_width / (float)context->config->game_window_height, 
-        0.1f, 10000.0f, 
-        context->config->private.proj
-    );
-#else
     // Projection
-    glm_perspective(90.0f, 
+    glm_perspective(glm_rad(45.0f), 
         (float)context->config->game_window_width / (float)context->config->game_window_height, 
         0.1f, 10000.0f, 
         context->config->private.proj
     );
-#endif
 }
 
 /**

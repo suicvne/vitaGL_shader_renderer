@@ -73,8 +73,55 @@ void NetLogForVita_finished_private() {
 #define VITA_EXAMPLE_TEXTURE "../background2-1.png"
 #endif
 
-int main()
-{
+// TODO: Create method that offsets the model via the MVP.
+void DrawCube(VGL3DContext* context, vec3 pos) {
+    const float SCALE = 1.0f;
+        /** Draw Sides **/
+        context->DrawQuad(context, 
+            0.f + pos[0], 0.f + pos[1], -1.f + pos[2], 
+            (vec3){0.f, 0.f, 0.f}, 
+            (vec3){SCALE,SCALE,SCALE}, 
+            (vec4){1.0f, 1.0f, 1.0f, 1.0f}
+        );
+        context->DrawQuad(context, 
+            -0.5f + pos[0], 0.f + pos[1], -0.5f + pos[2], 
+            (vec3){0.f, 90.f, 0.f}, 
+            (vec3){SCALE,SCALE,SCALE},
+            (vec4){1.0f, 1.0f, 1.0f, 1.0f}
+        );
+        
+        context->DrawQuad(context, 
+            0.f + pos[0], 0.f + pos[1], 0.f + pos[2], 
+            (vec3){0.f, 180.f, 0.f}, 
+            (vec3){SCALE,SCALE,SCALE},
+            (vec4){1.0f, 1.0f, 1.0f, 1.0f}
+        );
+        context->DrawQuad(context, 
+            0.5f + pos[0], 0.f + pos[1], -0.5f + pos[2], 
+            (vec3){0.f, 270.f, 0.f}, 
+            (vec3){SCALE,SCALE,SCALE},
+            (vec4){1.0f, 1.0f, 1.0f, 1.0f}
+        );
+        /** End Draw Sides **/
+        
+        // Top
+        context->DrawQuad(context, 
+            0.f + pos[0], 1.5f + pos[1], -0.5f + pos[2], 
+            (vec3){90.f, 0.f, 0.f}, 
+            (vec3){SCALE,SCALE,SCALE},
+            (vec4){0.0f,0.5f,0.f,1.0f}
+        );
+
+        // Bottom
+        context->DrawQuad(context, 
+            0.f + pos[0], 0.5f + pos[1], -0.5f + pos[2], 
+            (vec3){90.f, 0.f, 0.f}, 
+            (vec3){SCALE,SCALE,SCALE},
+            (vec4){0.0f,1.f,0.f,1.0f}
+        );
+}
+
+int main() {
     printf("Hello world!\n");
 
     VGL3DContext graphics = VGL3D_Create();
@@ -93,20 +140,38 @@ int main()
     // TODO: while(graphics.DoRun)
     while(graphics.private.doContinue)
     {
-        // Update
-        #ifdef VITA
-        doUpdate(&graphics, 1 / 240.0f);
-        #else
-        doUpdate(&graphics, 1 / 240.f);
-        #endif
+        // Update. TODO: actual time keeping
+        // doUpdate(&graphics, 1 / 240.f);
+
+        /*graphics.SetCamera(&graphics, 
+            (vec3) {
+                10.0f, 5.0f, -10.0f
+            },
+            (vec3) {
+                0.f, 45.f, 0.f
+            }
+        );*/
 
         graphics.Clear(&graphics);
         graphics.Begin(&graphics);
 
-        #define SCALE 1.0f
-
         graphics.BindTexture(&graphics, thisTex);
-        /** Begin Draw Sides **/
+
+        /*
+        for(int x = 0; x < 20; x++)
+        {
+            for(int z = 0; z < 20; z++)
+            {
+                DrawCube(&graphics, (vec3){x * 1.0f, 0.f, z * 1.0f});                
+            }
+        }
+        */
+
+        DrawCube(&graphics, (vec3){0.f, 0.f, 0.f});
+        // DrawCube(&graphics, (vec3){0.f, 2.f, 0.f});
+        // DrawCube(&graphics, (vec3){0.f, -2.f, 0.f});
+        /*
+        // Begin Draw Sides
         graphics.DrawQuad(&graphics, 
             0.f, 0.f, -1.f, 
             (vec3){0.f, 0.f, 0.f}, 
@@ -133,7 +198,7 @@ int main()
             (vec4){1.0f, 1.0f, 1.0f, 1.0f}
         );
         graphics.BindTexture(&graphics, 0);
-        /** End Draw Sides **/
+        // End Draw Sides
         
         // Top
         graphics.DrawQuad(&graphics, 
@@ -150,6 +215,7 @@ int main()
             (vec3){SCALE,SCALE,SCALE},
             (vec4){0.0f,1.f,0.f,1.0f}
         );
+        */
         
         graphics.End(&graphics);
     }
