@@ -60,6 +60,12 @@ if(VITA)
     src/version2/input/tesla_input_vita.c
   )
   message("Sources: ${SRC_FILES}")
+else()
+  # TODO: Move this whole statement down
+  # So we can properly check for GLFW
+  list(APPEND SRC_FILES
+    src/version2/input/tesla_input_glfw.c
+  )
 endif()
 
 add_executable(${PROJECT_NAME}

@@ -46,6 +46,8 @@ vec3 camEyeRot_p = {0.0f, 0.0f, 0.0f};
 #define SELF VGL3DContext* context
 #endif
 
+GLFWwindow* VGL3D_GetGlfwWindow_glfw(SELF);
+
 /**
  * @brief Creates a VGL3DContext on the stack.
  * 
@@ -79,6 +81,7 @@ inline VGL3DContext VGL3D_Create()
         .DestroyBackend =   VGL3D_DestroyBackend,
         .DestroySelf =      VGL3D_DestroySelf,
         .DestroyTexture =   VGL3D_DestroyTexture,
+        .GetGlfwWindow =    VGL3D_GetGlfwWindow_glfw,
         .private = {
             .curBoundTex = 0,
             .drawingInProgress = 0,
@@ -95,6 +98,10 @@ inline VGL3DContext VGL3D_Create()
 #endif
 
     return newContext;
+}
+
+GLFWwindow* VGL3D_GetGlfwWindow_glfw(SELF) {
+    return context->config->game_window;
 }
 
 /**
@@ -517,7 +524,7 @@ int VGL3D_InitBackend(SELF) {
     );
 
     glfwMakeContextCurrent(context->config->game_window);
-    glfwSetKeyCallback(context->config->game_window, __key_callback);
+    // glfwSetKeyCallback(context->config->game_window, __key_callback);
     
     // glfwSetWindowFullscreen(context->config->game_window, GLFW_TRUE);
 

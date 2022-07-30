@@ -71,6 +71,11 @@ typedef struct _VGL3D {
     void    (*DestroyBackend)(SELF);
     void    (*DestroySelf)(SELF);
 
+// TODO: Properly check for GLFW
+#ifndef VITA
+    struct GLFWwindow* (*GetGlfwWindow)(SELF);
+#endif
+
     // Config. Modifiable
     struct  _VGL3DConfig* config;
 

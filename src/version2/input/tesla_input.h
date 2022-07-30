@@ -86,9 +86,32 @@ typedef struct _TeslaGamepad {
 
 } TeslaGamepadInput;
 
+#undef SELF
+#define SELF struct _TeslaKeyboard* context
 
-CREATE_LOG_FN(SELF, TInput, "TeslaGamepadInput");
+
+typedef struct _TeslaKeyboard {
+
+#ifndef VITA
+    int     (*InitBackend)(SELF, struct GLFWwindow* window);
+#else // Default signature.
+    int     (*InitBackend)(SELF);
+#endif
+    void    (*DestroySelf)(SELF);
+    void    (*Log)(SELF, const char* fmt, ...);
+    void    (*PollInput)(SELF);
+    int     (*IsKeyDown)(SELF, uint32_t key);
+    int     (*IsKeyUp)(SELF, uint32_t key);
+    int     (*IsKeyHeld)(SELF, uint32_t key);
+
+    struct _TeslaKdbPrivate *PrivateData;
+
+} TeslaKeyboardInput;
+
+
+CREATE_LOG_FN(SELF, TInput, "TeslaInput");
 TeslaGamepadInput    TInput_Create();
+TeslaKeyboardInput   TKbd_Create();
 
 
 #undef SELF
