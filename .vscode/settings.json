@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "vgl_renderer_types.h": "c",
+        "vgl3d_textures.h": "c",
+        "vgl3d.h": "c"
+    }
+}

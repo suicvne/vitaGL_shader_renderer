@@ -23,7 +23,7 @@ void doUpdate(VGL3DContext* context, float dt)
         _OpType = !_OpType;
 
     // Manipulate the camera.
-    vec3 closePos = {-5.0f, 0.0f, -10.0f};
+    vec3 closePos = {0.0f, 0.0f, -10.0f};
 
     vec3 closeRot = { -30.0f, 0.0f, 0.0f };
     vec3 farRot = { -20.0f, -360.f, 20.0f };
@@ -143,7 +143,7 @@ void Test_CubeTest(VGL3DContext* graphics, VTEX thisTex) {
     }
 }
 
-static Test_Mesh DefaultCube;
+static TeslaMesh DefaultCube;
 
 void Test_MeshTest(VGL3DContext* graphics) {
     
@@ -197,7 +197,7 @@ int main() {
         graphics.Clear(&graphics);
         graphics.Begin(&graphics);
         
-        DefaultCube.DrawSlow(&DefaultCube, &graphics);
+        DefaultCube.Draw(&DefaultCube, &graphics);
 
         graphics.End(&graphics);
     }

@@ -8,7 +8,7 @@
 
 typedef struct _Vertex {
     float x, y, z;
-    float u, v;
+    float texCoordU, texCoordV;
 } Vertex;
 
 struct _Mesh TestMesh_Create();
@@ -22,7 +22,7 @@ typedef struct _Mesh {
     int (*InitWithVertices)(SELF, const Vertex* allocatedVertexData, size_t vertexDataSize);
     int (*InitWithDefaultCube)(SELF);
     void (*DestroySelf)(SELF);
-    void (*DrawSlow)(SELF, VGL3DContext* graphics);
+    void (*Draw)(SELF, VGL3DContext* graphics);
 
     Vertex* pVertices;
     size_t  pNumVertices;
@@ -32,7 +32,8 @@ typedef struct _Mesh {
     uint32_t MeshGpuHandle;
     uint32_t TextureGpuHandle;
     C_PRIVATE_END;
-} Test_Mesh;
+    
+} TeslaMesh;
 
 #undef SELF
 

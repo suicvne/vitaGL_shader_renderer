@@ -2,10 +2,10 @@
 #include <memory.h>
 #include <assert.h>
 
-#define SELF Test_Mesh* pSelf
+#define SELF TeslaMesh* pSelf
 
-Test_Mesh TestMesh_Create() {
-    return (Test_Mesh) {
+TeslaMesh TestMesh_Create() {
+    return (TeslaMesh) {
         .pVertices = NULL,
         .pNumVertices = 0,
         .pHasChanged = 0,
@@ -13,7 +13,7 @@ Test_Mesh TestMesh_Create() {
         .InitWithDefaultCube = TestMesh_InitWithDefaultCube,
         .DestroySelf = TestMesh_DestroySelf,
         .InitWithVertices = TestMesh_InitWithVertices,
-        .DrawSlow = TestMesh_DrawSlow,
+        .Draw = TestMesh_DrawSlow,
 
         .private.MeshGpuHandle = 0,
         .private.TextureGpuHandle = 0,
@@ -30,6 +30,7 @@ void TestMesh_DrawSlow(SELF, VGL3DContext* graphics) {
             graphics->CreateVBOWithVertexData(graphics, (const float*)pSelf->pVertices, pSelf->pNumVertices);
     }
 
+    // Bind the texture.
     graphics->BindTexture(graphics, pSelf->private.TextureGpuHandle);
 
     // Draw.

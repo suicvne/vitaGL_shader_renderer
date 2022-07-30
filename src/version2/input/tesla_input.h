@@ -89,11 +89,14 @@ typedef struct _TeslaGamepad {
 #undef SELF
 #define SELF struct _TeslaKeyboard* context
 
+#ifndef VITA
+struct _GLFWwindow;
+#endif
 
 typedef struct _TeslaKeyboard {
 
 #ifndef VITA
-    int     (*InitBackend)(SELF, struct GLFWwindow* window);
+    int     (*InitBackend)(SELF, struct _GLFWwindow* window);
 #else // Default signature.
     int     (*InitBackend)(SELF);
 #endif
