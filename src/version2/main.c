@@ -150,7 +150,9 @@ int main() {
     GLFWwindow* glfwWin = graphics.GetGlfwWindow(&graphics);
     TeslaKeyboardInput keyboard = TKbd_Create();
     keyboard.InitBackend(&keyboard, glfwWin);
-    // TODO: while(graphics.DoRun)
+
+    // bump
+    doUpdate(&graphics, 1 / 240.f);
     while(graphics.private.doContinue)
     {
         keyboard.PollInput(&keyboard);
@@ -235,6 +237,9 @@ int main() {
         
         graphics.End(&graphics);
     }
+
+    // Free resources that keyboard may have needed to allocate.
+    keyboard.DestroySelf(&keyboard);
 
     // Destroy created texture.
     graphics.DestroyTexture(&graphics, thisTex);
