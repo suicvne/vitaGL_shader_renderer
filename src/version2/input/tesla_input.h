@@ -77,7 +77,6 @@ struct _TeslaGamepadPrivate;
 typedef struct _TeslaGamepad {
 
     int     (*InitBackend)(SELF);
-    void    (*DestroyBackend)(SELF);
     void    (*DestroySelf)(SELF);
     void    (*Log)(SELF, const char* fmt, ...);
     void    (*PollInput)(SELF);

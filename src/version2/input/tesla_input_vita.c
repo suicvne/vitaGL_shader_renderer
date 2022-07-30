@@ -32,18 +32,20 @@ int     TInput_InitBackend_Vita(SELF);
 void    TInput_DestroyBackend_Vita(SELF);
 void    TInput_DestroySelf_Vita(SELF);
 void    TInput_Poll_Vita(SELF);
-int     TInput_IsButtonDown_Vita(SELF);
+int     TInput_IsButtonDown_Vita(SELF, TeslaButtonType btn);
 
 TeslaGamepadInput TInput_Create() {
     TeslaGamepadInput newInput = (TeslaGamepadInput) {
         .PrivateData =      malloc(sizeof(TeslaGamepadPrivate)),
         .InitBackend =      TInput_InitBackend_Vita,
-        .DestroyBackend =   TInput_DestroyBackend_Vita,
         .DestroySelf =      TInput_DestroySelf_Vita,
-        .Log =              TInput_Log
+        .Log =              TInput_Log,
+        .PollInput =        TInput_Poll_Vita,
+        .IsButtonDown =     TInput_IsButtonDown_Vita,
     };
 
     newInput.PrivateData->VitaCtrlData = (SceCtrlData){0};
+    newInput.PrivateData->TeslaGamepadBtnBitfield = 0;
 
     return newInput;
 }
@@ -59,11 +61,10 @@ void TInput_Poll_Vita(SELF) {
     // These are directly compatible.
     context->PrivateData->TeslaGamepadBtnBitfield
         = context->PrivateData->VitaCtrlData.buttons;
-
 }
 
 int TInput_IsButtonDown_Vita(SELF, TeslaButtonType btn) {
-    return ()
+    return (context->PrivateData->TeslaGamepadBtnBitfield & btn);
 }
 
 int TInput_InitBackend_Vita(SELF) {
@@ -78,8 +79,9 @@ void TInput_DestroyBackend_Vita(SELF) {
 }
 
 void TInput_DestroySelf_Vita(SELF) {
-    // Nothing to do here.
-    // We're not allocating anything on the heap...at least I hope not.
+    context->Log(context, "Freeing private data....");
+    if(context->PrivateData != NULL)
+        free(context->PrivateData);
 }
 
 #undef SELF
