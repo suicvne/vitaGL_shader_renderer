@@ -12,17 +12,21 @@
  * @brief Defines an enumeration for default gamepad buttons.
  */
 typedef enum {
+    
+    SELECT =        0x00000001,
+    L_STICK_IN =    0x00000002,
+    R_STICK_IN =    0x00000004,
+    START =         0x00000008,
 
-    DPAD_UP =       0x01,
-    DPAD_DOWN =     0x02,
-    DPAD_LEFT =     0x03,
-    DPAD_RIGHT =    0x04,
-    L_BUMPER =      0X05,
-    R_BUMPER =      0X06,
-    L_TRIGGER =     0X07,
-    R_TRIGGER =     0X08,
-    SELECT =        0X09,
-    START =         0X0A,
+    DPAD_UP =       0x00000010,
+    DPAD_RIGHT =    0x00000020,
+    DPAD_DOWN =     0x00000040,
+    DPAD_LEFT =     0x00000080,
+
+    L_TRIGGER =     0x00000100,
+    R_TRIGGER =     0x00000200,
+    L_BUMPER =      0x00000400,
+    R_BUMPER =      0x00000800,
 
     /**
      * @brief North face button. 
@@ -30,23 +34,7 @@ typedef enum {
      * Y on Xbox.
      * X on Nintendo.
      */
-    FACE_NORTH =    0x0B,
-
-    /**
-     * @brief South face button.
-     * X on Sony.
-     * A on Xbox.
-     * B on Nintendo.
-     */
-    FACE_SOUTH =    0x0C,
-
-    /**
-     * @brief East face button.
-     * Square on Sony.
-     * X on Xbox.
-     * Y on Nintendo.
-     */
-    FACE_EAST =     0x0D,
+    FACE_NORTH =    0x00001000,
 
     /**
      * @brief West face button.
@@ -54,9 +42,24 @@ typedef enum {
      * B on Xbox.
      * A on Nintendo.
      */
-    FACE_WEST =     0x0E,
-    L_STICK_IN =    0x0F,
-    R_STICK_IN =    0x10
+    FACE_EAST =     0x00002000,
+
+    /**
+     * @brief South face button.
+     * X on Sony.
+     * A on Xbox.
+     * B on Nintendo.
+     */
+    FACE_SOUTH =    0x00004000,
+
+    /**
+     * @brief East face button.
+     * Square on Sony.
+     * X on Xbox.
+     * Y on Nintendo.
+     */
+    FACE_WEST =     0x00008000,
+
 } TeslaButtonType;
 
 #ifndef SELF
@@ -77,6 +80,8 @@ typedef struct _TeslaGamepad {
     void    (*DestroyBackend)(SELF);
     void    (*DestroySelf)(SELF);
     void    (*Log)(SELF, const char* fmt, ...);
+    void    (*PollInput)(SELF);
+    int     (*IsButtonDown)(SELF, TeslaButtonType btn);
 
     struct _TeslaGamepadPrivate *PrivateData;
 
