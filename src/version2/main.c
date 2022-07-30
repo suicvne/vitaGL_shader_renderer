@@ -1,11 +1,12 @@
 #include <stdio.h>
+#include <assert.h>
+
 #include "vgl3d.h"
 #include "input/tesla_input.h"
+#include "mesh/mesh.h"
 
 static inline float lerp(float a, float b, float f)
-{
-    return a + f * (b - a);
-}
+{ return a + f * (b - a); }
 
 static float _CurTime = 0.0f;
 static uint8_t _OpType = 0;
@@ -130,6 +131,24 @@ void CheckInput_keyboard(TeslaKeyboardInput* kbdInput) {
     else doSpin = 0;
 }
 
+void Test_CubeTest(VGL3DContext* graphics, VTEX thisTex) {
+    graphics->BindTexture(graphics, thisTex);
+
+    for (int x = 0; x < 20; x++)
+    {
+        for (int z = 0; z < 20; z++)
+        {
+            DrawCube(graphics, (vec3){x * 1.0f, 0.f, z * 1.0f});
+        }
+    }
+}
+
+static Test_Mesh DefaultCube;
+
+void Test_MeshTest(VGL3DContext* graphics) {
+    
+}
+
 int main() {
     printf("Hello world!\n");
 
@@ -150,6 +169,11 @@ int main() {
     GLFWwindow* glfwWin = graphics.GetGlfwWindow(&graphics);
     TeslaKeyboardInput keyboard = TKbd_Create();
     keyboard.InitBackend(&keyboard, glfwWin);
+
+    // Test
+    DefaultCube = TestMesh_Create();
+    DefaultCube.InitWithDefaultCube(&DefaultCube);
+    assert(DefaultCube.pNumVertices > 0);
 
     // bump
     doUpdate(&graphics, 1 / 240.f);
@@ -172,71 +196,16 @@ int main() {
 
         graphics.Clear(&graphics);
         graphics.Begin(&graphics);
+        
+        DefaultCube.DrawSlow(&DefaultCube, &graphics);
 
-        graphics.BindTexture(&graphics, thisTex);
-
-        
-        for(int x = 0; x < 20; x++)
-        {
-            for(int z = 0; z < 20; z++)
-            {
-                DrawCube(&graphics, (vec3){x * 1.0f, 0.f, z * 1.0f});                
-            }
-        }
-        
-
-        // DrawCube(&graphics, (vec3){0.f, 0.f, 0.f});
-        // DrawCube(&graphics, (vec3){0.f, 2.f, 0.f});
-        // DrawCube(&graphics, (vec3){0.f, -2.f, 0.f});
-        /*
-        // Begin Draw Sides
-        graphics.DrawQuad(&graphics, 
-            0.f, 0.f, -1.f, 
-            (vec3){0.f, 0.f, 0.f}, 
-            (vec3){SCALE,SCALE,SCALE}, 
-            (vec4){1.0f, 1.0f, 1.0f, 1.0f}
-        );
-        graphics.DrawQuad(&graphics, 
-            -0.5f, 0.f, -0.5f, 
-            (vec3){0.f, 90.f, 0.f}, 
-            (vec3){SCALE,SCALE,SCALE},
-            (vec4){1.0f, 1.0f, 1.0f, 1.0f}
-        );
-        
-        graphics.DrawQuad(&graphics, 
-            0.f, 0.f, 0.f, 
-            (vec3){0.f, 180.f, 0.f}, 
-            (vec3){SCALE,SCALE,SCALE},
-            (vec4){1.0f, 1.0f, 1.0f, 1.0f}
-        );
-        graphics.DrawQuad(&graphics, 
-            0.5f, 0.f, -0.5f, 
-            (vec3){0.f, 270.f, 0.f}, 
-            (vec3){SCALE,SCALE,SCALE},
-            (vec4){1.0f, 1.0f, 1.0f, 1.0f}
-        );
-        graphics.BindTexture(&graphics, 0);
-        // End Draw Sides
-        
-        // Top
-        graphics.DrawQuad(&graphics, 
-            0.f, 1.5f, -0.5f, 
-            (vec3){90.f, 0.f, 0.f}, 
-            (vec3){SCALE,SCALE,SCALE},
-            (vec4){0.0f,0.5f,0.f,1.0f}
-        );
-
-        // Bottom
-        graphics.DrawQuad(&graphics, 
-            0.f, 0.5f, -0.5f, 
-            (vec3){90.f, 0.f, 0.f}, 
-            (vec3){SCALE,SCALE,SCALE},
-            (vec4){0.0f,1.f,0.f,1.0f}
-        );
-        */
-        
         graphics.End(&graphics);
     }
+
+    // Free mesh resources that we allocated.
+    // Since this is stack allocated cube we dont
+    //  need to free the DefaultCube.
+    DefaultCube.DestroySelf(&DefaultCube);
 
     // Free resources that keyboard may have needed to allocate.
     keyboard.DestroySelf(&keyboard);

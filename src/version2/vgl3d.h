@@ -57,19 +57,22 @@ struct _VGL3DConfig;
 typedef struct _VGL3D {
 
     // API Functions!!
-    int     (*InitBackend)(SELF);
-    void    (*Log)(SELF, const char *fmt, ...);
-    void    (*Begin)(SELF);
-    void    (*End)(SELF);
-    void    (*Clear)(SELF);
-    void    (*SetClearColor)(SELF, vec4 rgba);
-    void    (*DrawQuad)(SELF, float x, float y, float z, vec3 rot, vec3 scale, vec4 rgba);
-    void    (*SetCamera)(SELF, vec3 pos, vec3 rot_deg);
-    VTEX    (*LoadTextureAt)(SELF, const char *path);
-    void    (*BindTexture)(SELF, VTEX tex);
-    void    (*DestroyTexture)(SELF, VTEX texToDestroy);
-    void    (*DestroyBackend)(SELF);
-    void    (*DestroySelf)(SELF);
+    int         (*InitBackend)(SELF);
+    void        (*Log)(SELF, const char *fmt, ...);
+    void        (*Begin)(SELF);
+    void        (*End)(SELF);
+    void        (*Clear)(SELF);
+    void        (*SetClearColor)(SELF, vec4 rgba);
+    void        (*DrawQuad)(SELF, float x, float y, float z, vec3 rot, vec3 scale, vec4 rgba);
+    void        (*SetCamera)(SELF, vec3 pos, vec3 rot_deg);
+    VTEX        (*LoadTextureAt)(SELF, const char *path);
+    void        (*BindTexture)(SELF, VTEX tex);
+    void        (*DestroyTexture)(SELF, VTEX texToDestroy);
+    void        (*DestroyBackend)(SELF);
+    void        (*DestroySelf)(SELF);
+    void        (*DrawFromVBO)(SELF, uint32_t vboHandle, size_t nVertices);
+    uint32_t    (*CreateVBOWithVertexData)(SELF, const float* vertexData, size_t nVertices);
+    // TODO: Function to re-buffer data to existing VBO.
 
 // TODO: Properly check for GLFW
 #ifndef VITA
@@ -116,6 +119,8 @@ void            VGL3D_Clear(SELF);
 void            VGL3D_DestroyTexture(SELF, VTEX texToDestroy);
 void            VGL3D_DestroyBackend(SELF);
 void            VGL3D_DestroySelf(SELF);
+void            VGL3D_DrawFromVBO(SELF, uint32_t vboHandle, size_t nVertices);
+uint32_t        VGL3D_CreateVBOWithVertexData(SELF, const float* packedVertexData, size_t nVertices);
 // ------------------------------ Default/reference function signatures. ------------------------------ 
 
 #undef SELF

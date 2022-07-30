@@ -52,6 +52,7 @@ endif()
 set(SRC_FILES
   src/version2/main.c
   src/version2/vgl3d_gl2es.c
+  src/version2/mesh/mesh.c
 )
 
 if(VITA)

@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define VGL_STRIDE (sizeof(float) * VGL_COMPONENTS_PER_VERTEX)
+
 // =========== Concrete Implementations for OpenGL ES 2.0 Renderer =============
 
 /**
@@ -67,21 +69,23 @@ inline VGL3DContext VGL3D_Create()
 {
     // TODO: libGimbal'fy? 
     VGL3DContext newContext = (VGL3DContext) {
-        .config =           malloc(sizeof(VGL3DConfig)),
-        .Begin =            VGL3D_Begin,
-        .End =              VGL3D_End,
-        .DrawQuad =         VGL3D_DrawQuad,
-        .InitBackend =      VGL3D_InitBackend,
-        .Log =              VGL3D_Log,
-        .SetClearColor =    VGL3D_SetClearColor,
-        .Clear =            VGL3D_Clear,
-        .SetCamera =        VGL3D_SetCamera,
-        .LoadTextureAt =    VGL3D_LoadAndCreateGLTexture_private,
-        .BindTexture =      VGL3D_BindTexture,
-        .DestroyBackend =   VGL3D_DestroyBackend,
-        .DestroySelf =      VGL3D_DestroySelf,
-        .DestroyTexture =   VGL3D_DestroyTexture,
-        .GetGlfwWindow =    VGL3D_GetGlfwWindow_glfw,
+        .config =                  malloc(sizeof(VGL3DConfig)),
+        .Begin =                   VGL3D_Begin,
+        .End =                     VGL3D_End,
+        .DrawQuad =                VGL3D_DrawQuad,
+        .DrawFromVBO =             VGL3D_DrawFromVBO,
+        .InitBackend =             VGL3D_InitBackend,
+        .Log =                     VGL3D_Log,
+        .SetClearColor =           VGL3D_SetClearColor,
+        .Clear =                   VGL3D_Clear,
+        .SetCamera =               VGL3D_SetCamera,
+        .LoadTextureAt =           VGL3D_LoadAndCreateGLTexture_private,
+        .BindTexture =             VGL3D_BindTexture,
+        .DestroyBackend =          VGL3D_DestroyBackend,
+        .DestroySelf =             VGL3D_DestroySelf,
+        .DestroyTexture =          VGL3D_DestroyTexture,
+        .GetGlfwWindow =           VGL3D_GetGlfwWindow_glfw,
+        .CreateVBOWithVertexData = VGL3D_CreateVBOWithVertexData,
         .private = {
             .curBoundTex = 0,
             .drawingInProgress = 0,
@@ -631,6 +635,46 @@ GLfloat _quad_vertices_h[] =
     0.5f, -0.5f, 1.0f,  // bottom right
 };
 
+static inline void VGL3D_private_InitializeDefaultVertexAttribs(SELF, mat4* modelMat) {
+    // Enable shit...again wasteful for now.
+    int vPosLoc = 0;
+    int vColorLoc;
+    int vTexCoordLoc = 1;
+    {
+        // Enable Vertex Attributes.
+        glEnableVertexAttribArray(vPosLoc);
+        CHECK_GL_ERROR(context, "glEnableVertexAttribArray vPosLoc");
+        glEnableVertexAttribArray(vTexCoordLoc);
+        CHECK_GL_ERROR(context, "glEnableVertexAttribArray vTexCoordLoc");
+        
+        // Offset for vertex positions
+        glVertexAttribPointer(vPosLoc, 3, GL_FLOAT, GL_FALSE, VGL_STRIDE, 0);
+        CHECK_GL_ERROR(context, "glVertexAttribPointer xyz");
+        glVertexAttribPointer(vTexCoordLoc, 2, GL_FLOAT, GL_FALSE, VGL_STRIDE, (void*)(sizeof(float) * 3));
+        CHECK_GL_ERROR(context, "glVertexAttribPointer vTexCoord");
+
+        // Color data/use texture flag.
+        vColorLoc = glGetUniformLocation(context->config->private.curShaderID, "vColor"); // TODO: Interpolate into vertex data.
+        glUniform4fv(vColorLoc, 1, (vec4){ 0.75f, 0.55f, 0.25f, 1.0f });
+        int fUseTexture = glGetUniformLocation(context->config->private.curShaderID, "useTexture");
+        glUniform1i(fUseTexture, (context->private.curBoundTex != 0));
+
+        // GLint uniMVP = glGetUniformLocation(context->config->private.curShaderID, "_mvp");
+
+        GLint uniM = glGetUniformLocation(context->config->private.curShaderID, "_model");
+        GLint uniV = glGetUniformLocation(context->config->private.curShaderID, "_view");
+        GLint uniP = glGetUniformLocation(context->config->private.curShaderID, "_projection");
+
+        glUniformMatrix4fv(uniM, 1, GL_FALSE, (const GLfloat*)(*modelMat));
+        glUniformMatrix4fv(uniV, 1, GL_FALSE, (const GLfloat*)context->config->private.view);
+        glUniformMatrix4fv(uniP, 1, GL_FALSE, (const GLfloat*)context->config->private.proj);
+        CHECK_GL_ERROR(context, "glUniformMatrix4fv mvp");
+
+        // Use this for when you want rgba to be a per-vertex attribute. Not a huge deal to us right at this very moment.
+        // glVertexAttrib4f(vColorLoc, rgba[0], rgba[1], rgba[2], rgba[3]);
+    }
+}
+
 /**
  * @brief Draws a quad given pos, rot, scale, and rgba.
  * This will build a model matrix given the arguments and send it to the GPU.
@@ -653,8 +697,6 @@ void VGL3D_DrawQuad(
     vec4 rgba
 )
 {
-    #define STRIDE (sizeof(float) * VGL_COMPONENTS_PER_VERTEX)
-
     // Build model matrix.
     mat4 model = GLM_MAT4_IDENTITY_INIT;
     #ifdef VITA
@@ -675,53 +717,17 @@ void VGL3D_DrawQuad(
     // Build mvp with newly created model matrix.
     VGL3D_UpdateViewProjection_private(context, &model);
 
-    // Enable shit...again wasteful for now.
-    int vPosLoc = 0;
-    int vColorLoc;
-    int vTexCoordLoc = 1;
-    {
-        // Enable Vertex Attributes.
-        glEnableVertexAttribArray(vPosLoc);
-        CHECK_GL_ERROR(context, "glEnableVertexAttribArray vPosLoc");
-        glEnableVertexAttribArray(vTexCoordLoc);
-        CHECK_GL_ERROR(context, "glEnableVertexAttribArray vTexCoordLoc");
-        
-        // Offset for vertex positions
-        glVertexAttribPointer(vPosLoc, 3, GL_FLOAT, GL_FALSE, STRIDE, 0);
-        CHECK_GL_ERROR(context, "glVertexAttribPointer xyz");
-        glVertexAttribPointer(vTexCoordLoc, 2, GL_FLOAT, GL_FALSE, STRIDE, (void*)(sizeof(float) * 3));
-        CHECK_GL_ERROR(context, "glVertexAttribPointer vTexCoord");
-
-        // Color data/use texture flag.
-        vColorLoc = glGetUniformLocation(context->config->private.curShaderID, "vColor"); // TODO: Interpolate into vertex data.
-        glUniform4fv(vColorLoc, 1, rgba);
-        int fUseTexture = glGetUniformLocation(context->config->private.curShaderID, "useTexture");
-        glUniform1i(fUseTexture, (context->private.curBoundTex != 0));
-
-        // GLint uniMVP = glGetUniformLocation(context->config->private.curShaderID, "_mvp");
-
-        GLint uniM = glGetUniformLocation(context->config->private.curShaderID, "_model");
-        GLint uniV = glGetUniformLocation(context->config->private.curShaderID, "_view");
-        GLint uniP = glGetUniformLocation(context->config->private.curShaderID, "_projection");
-
-        glUniformMatrix4fv(uniM, 1, GL_FALSE, (const GLfloat*)model);
-        glUniformMatrix4fv(uniV, 1, GL_FALSE, (const GLfloat*)context->config->private.view);
-        glUniformMatrix4fv(uniP, 1, GL_FALSE, (const GLfloat*)context->config->private.proj);
-        CHECK_GL_ERROR(context, "glUniformMatrix4fv mvp");
-
-        // Use this for when you want rgba to be a per-vertex attribute. Not a huge deal to us right at this very moment.
-        // glVertexAttrib4f(vColorLoc, rgba[0], rgba[1], rgba[2], rgba[3]);
-    }
-
-    // Tell where in the VBO to start.
-    // glVertexPointer(3, GL_FLOAT, 0, 0);
+    // Initialize default vertex attribs.
+    VGL3D_private_InitializeDefaultVertexAttribs(context, &model);
 
     // Actually finally draw something to the screen.
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, quad_indices_private);
-    // glDrawArrays(GL_TRIANGLES, 0, 6);
     CHECK_GL_ERROR(context, "glDrawElements");
-    glDisableVertexAttribArray(vPosLoc);
-    glDisableVertexAttribArray(vTexCoordLoc);
+    
+    
+    
+    // glDisableVertexAttribArray(vPosLoc);
+    // glDisableVertexAttribArray(vTexCoordLoc);
 }
 
 /**
@@ -742,6 +748,37 @@ void VGL3D_SetClearColor(SELF, vec4 rgba)
 void VGL3D_Clear(SELF)
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+}
+
+uint32_t VGL3D_CreateVBOWithVertexData(SELF, const float* packedVertexData, size_t nVertices) {
+    uint32_t resultingHandle = 0;
+    size_t totalBufferSize =   (sizeof(float) * VGL_COMPONENTS_PER_VERTEX) * nVertices;
+
+    context->Log(context, "Creating VBO with %u vertices. Total Size: %u bytes.", nVertices, totalBufferSize);
+
+    glGenBuffers(1, &resultingHandle);
+    CHECK_GL_ERROR(context, "VGL3D_CreateVBOWithVertexData/glGenBuffers");
+
+    glBindBuffer(GL_ARRAY_BUFFER, resultingHandle);
+    CHECK_GL_ERROR(context, "VGL3D_CreateVBOWithVertexData/glBindBuffer");
+
+    glBufferData(GL_ARRAY_BUFFER, totalBufferSize, packedVertexData, GL_STATIC_DRAW);
+    CHECK_GL_ERROR(context, "VGL3D_CreateVBOWithVertexData/glBufferData");
+
+    return resultingHandle;
+}
+
+void VGL3D_DrawFromVBO(SELF, uint32_t vboHandle, size_t nVertices) {
+
+    mat4 model = GLM_MAT4_IDENTITY_INIT;
+    const float scale = 0.5f;
+    glm_scale(model, (vec3){scale,scale,scale});
+
+    VGL3D_UpdateViewProjection_private(context, &model);
+
+    glBindBuffer(GL_ARRAY_BUFFER, vboHandle);
+    VGL3D_private_InitializeDefaultVertexAttribs(context, &model);
+    glDrawArrays(GL_TRIANGLES, 0, nVertices);
 }
 
 // =========== Concrete Implementations for OpenGL ES 2.0 Renderer =============
