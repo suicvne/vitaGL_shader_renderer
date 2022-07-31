@@ -94,6 +94,7 @@ void TKdb_DestroySelf_glfw(SELF) {
 void TKdb_PollInput_glfw(SELF) {
     if(context->PrivateData->WindowListening
          != NULL) {
+        glfwMakeContextCurrent(context->PrivateData->WindowListening);
         glfwPollEvents();
         Tkdb_private_LastKbdCtx = context;
 

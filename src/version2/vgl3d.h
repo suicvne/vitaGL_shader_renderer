@@ -81,11 +81,11 @@ typedef struct _VGL3D {
     void        (*DestroyBackend)(SELF);
     void        (*DestroySelf)(SELF);
     void        (*DrawFromVBO)(SELF, uint32_t vboHandle, size_t nVertices);
+    void        (*DrawFromVBOTranslationIndices)(SELF, uint32_t vboHandle, size_t nVertices, vec3 pos, vec3 rot, vec3 scale, uint32_t* indices, size_t nIndices);
     void        (*DrawFromVBOTranslation)(SELF, uint32_t vboHandle, size_t nVertices, vec3 pos, vec3 rot, vec3 scale);
     uint32_t    (*CreateVBOWithVertexData)(SELF, const float* vertexData, size_t nVertices);
     int         (*VBOBuffer)(SELF, uint32_t vboHandle, const float* vertexData, size_t nVertices);
     void        (*SetProjectionType)(SELF, VGL3D_ProjectionMatType newMatType);
-    // TODO: Function to re-buffer data to existing VBO.
 
 // TODO: Properly check for GLFW
 #ifndef VITA
@@ -142,6 +142,7 @@ void            VGL3D_DrawFromVBO(SELF, uint32_t vboHandle, size_t nVertices);
 uint32_t        VGL3D_CreateVBOWithVertexData(SELF, const float* packedVertexData, size_t nVertices);
 void            VGL3D_VBOBuffer(SELF, uint32_t vboHandle, const float* vertexData, size_t nVertices);
 void            VGL3D_DrawFromVBOTranslation(SELF, uint32_t vboHandle, size_t nVertices, vec3 pos, vec3 rot, vec3 scale);
+void            VGL3D_DrawFromVBOTranslationIndices(SELF, uint32_t vboHandle, size_t nVertices, vec3 pos, vec3 rot, vec3 scale, uint32_t* indices, size_t nIndices);
 // ------------------------------ Default/reference function signatures. ------------------------------ 
 
 #undef SELF

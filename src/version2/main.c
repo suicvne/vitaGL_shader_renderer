@@ -252,7 +252,6 @@ int main() {
 
     VGL3DContext graphics = VGL3D_Create();
 
-
     #ifdef VITA
     // Override Log function for Vita.
     // Redirect logs into debugNet instead of general Vita stdout.
@@ -290,19 +289,14 @@ int main() {
         graphics.Clear(&graphics);
         graphics.Begin(&graphics);
 
-        /*
-        DefaultCube.DrawTranslate(&DefaultCube, 
+        
+        DefaultCube.DrawTranslate(
+            &DefaultCube, 
             &graphics, 
             (vec3){0.f, 0.f, 0.f}, 
             (vec3){0.f, 0.f, 0.f}, 
-            (vec3){0.12f, 0.12f, 0.12f});
-            */
-
-        DrawCube(&graphics, (vec3){2.0f, 0.f, 5 * 1.0f});
-        
-        // DefaultCube.Draw(&DefaultCube, &graphics);
-        // Test_CubeTest(&graphics, thisTex);
-        // Test_PerspectiveSwap(&graphics, thisTex);
+            (vec3){1.f, 1.f, 1.f}
+        );
 
 
         // Draw other shit here.

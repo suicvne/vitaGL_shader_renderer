@@ -69,25 +69,26 @@ inline VGL3DContext VGL3D_Create()
 {
     // TODO: libGimbal'fy? 
     VGL3DContext newContext = (VGL3DContext) {
-        .config =                   malloc(sizeof(VGL3DConfig)),
-        .Begin =                    VGL3D_Begin,
-        .End =                      VGL3D_End,
-        .DrawQuad =                 VGL3D_DrawQuad,
-        .DrawFromVBO =              VGL3D_DrawFromVBO,
-        .InitBackend =              VGL3D_InitBackend,
-        .Log =                      VGL3D_Log,
-        .SetClearColor =            VGL3D_SetClearColor,
-        .Clear =                    VGL3D_Clear,
-        .SetCamera =                VGL3D_SetCamera,
-        .LoadTextureAt =            VGL3D_LoadAndCreateGLTexture_private,
-        .BindTexture =              VGL3D_BindTexture,
-        .DestroyBackend =           VGL3D_DestroyBackend,
-        .DestroySelf =              VGL3D_DestroySelf,
-        .DestroyTexture =           VGL3D_DestroyTexture,
-        .GetGlfwWindow =            VGL3D_GetGlfwWindow_glfw,
-        .CreateVBOWithVertexData =  VGL3D_CreateVBOWithVertexData,
-        .SetProjectionType =        VGL3D_SetProjectionType,
-        .DrawFromVBOTranslation =   VGL3D_DrawFromVBOTranslation,
+        .config =                        malloc(sizeof(VGL3DConfig)),
+        .Begin =                         VGL3D_Begin,
+        .End =                           VGL3D_End,
+        .DrawQuad =                      VGL3D_DrawQuad,
+        .DrawFromVBO =                   VGL3D_DrawFromVBO,
+        .InitBackend =                   VGL3D_InitBackend,
+        .Log =                           VGL3D_Log,
+        .SetClearColor =                 VGL3D_SetClearColor,
+        .Clear =                         VGL3D_Clear,
+        .SetCamera =                     VGL3D_SetCamera,
+        .LoadTextureAt =                 VGL3D_LoadAndCreateGLTexture_private,
+        .BindTexture =                   VGL3D_BindTexture,
+        .DestroyBackend =                VGL3D_DestroyBackend,
+        .DestroySelf =                   VGL3D_DestroySelf,
+        .DestroyTexture =                VGL3D_DestroyTexture,
+        .GetGlfwWindow =                 VGL3D_GetGlfwWindow_glfw,
+        .CreateVBOWithVertexData =       VGL3D_CreateVBOWithVertexData,
+        .SetProjectionType =             VGL3D_SetProjectionType,
+        .DrawFromVBOTranslation =        VGL3D_DrawFromVBOTranslation,
+        .DrawFromVBOTranslationIndices = VGL3D_DrawFromVBOTranslationIndices,
         .private = {
             .curBoundTex = 0,
             .drawingInProgress = 0,
@@ -340,7 +341,8 @@ void VGL3D_UpdateViewProjection_private(SELF, mat4* oModelMat) {
     glm_rotate_y(context->config->private.view, glm_rad(camEyeRot_p[1]), context->config->private.view);
     glm_rotate_z(context->config->private.view, glm_rad(camEyeRot_p[2]), context->config->private.view);
 
-
+    const float closePlane = 0.0001f;
+    const float farPlane   = 1000.f;
     switch(context->private.projectionMatrixType) {
         case VGL3D_PROJECTION_ORTHOGRAPHIC:
             glm_ortho(
@@ -348,14 +350,14 @@ void VGL3D_UpdateViewProjection_private(SELF, mat4* oModelMat) {
                 (float)-(context->config->game_window_width / 2.f), 
                 (float)-(context->config->game_window_height / 2.f), 
                 (float)context->config->game_window_height / 2.f, 
-                0.1f, 10000.0f, context->config->private.proj
+                closePlane, farPlane, context->config->private.proj
             );
             break;
         case VGL3D_PROJECTION_PERSPECTIVE:
             glm_perspective(
                 glm_rad(45.0f), 
                 (float)context->config->game_window_width / (float)context->config->game_window_height, 
-                0.1f, 10000.0f, 
+                closePlane, farPlane, 
                 context->config->private.proj
             );
             break;
@@ -589,7 +591,7 @@ int VGL3D_InitBackend(SELF) {
 
     glEnable(GL_TEXTURE_2D);
     glEnable(GL_BLEND);
-    glEnable(GL_DEPTH_TEST);
+    // glEnable(GL_DEPTH_TEST);
     // glDepthFunc(GL_ALWAYS);
     glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
@@ -801,6 +803,25 @@ void VGL3D_DrawFromVBO(SELF, uint32_t vboHandle, size_t nVertices) {
     glDrawArrays(GL_TRIANGLES, 0, nVertices);
 }
 
+void VGL3D_DrawFromVBOTranslationIndices(SELF, uint32_t vboHandle, size_t nVertices, vec3 pos, vec3 rot, vec3 scale, uint32_t* indices, size_t nIndices) {
+    mat4 model = GLM_MAT4_IDENTITY_INIT;
+    const vec4 white = (const vec4){1.0f, 1.0, 1.0f, 1.0f};
+    // TRS -> Translate, Rotate, Scale
+    glm_translate(model, pos);
+    glm_rotate_x(model, rot[0], model);
+    glm_rotate_y(model, rot[1], model);
+    glm_rotate_z(model, rot[2], model);
+    glm_scale(model, scale);
+
+    VGL3D_UpdateViewProjection_private(context, &model);
+
+    glBindBuffer(GL_ARRAY_BUFFER, vboHandle);
+    VGL3D_private_InitializeDefaultVertexAttribs(context, &model, (float*)white);
+
+    // glDrawElements(GL_TRIANGLES, nVertices, GL_UNSIGNED_INT, indices);
+    glDrawElements(GL_TRIANGLES, nIndices, GL_UNSIGNED_INT, indices);
+}
+
 void VGL3D_DrawFromVBOTranslation(SELF, uint32_t vboHandle, size_t nVertices, vec3 pos, vec3 rot, vec3 scale) {
 
     mat4 model = GLM_MAT4_IDENTITY_INIT;
@@ -825,7 +846,7 @@ void VGL3D_DrawFromVBOTranslation(SELF, uint32_t vboHandle, size_t nVertices, ve
     // glDrawElements(GL_TRIANGLES, nVertices, GL_UNSIGNED_SHORT, 0);
 
 
-    // glDrawArrays(GL_TRIANGLES, 0, nVertices);
+    glDrawArrays(GL_TRIANGLES, 0, nVertices);
 
     // glDrawArrays(GL_TRIANGLE_STRIP, 0, nVertices);
     

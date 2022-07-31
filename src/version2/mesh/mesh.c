@@ -47,15 +47,27 @@ void TestMesh_DrawTranslate(SELF, VGL3DContext* graphics, vec3 pos, vec3 rot, ve
     // Bind Texture.
     graphics->BindTexture(graphics, pSelf->private.TextureGpuHandle);
 
-    // Draw from VBO.
-    graphics->DrawFromVBOTranslation(
-        graphics, 
-        pSelf->private.MeshGpuHandle, 
-        pSelf->pNumVertices, 
-        pos, 
-        rot, 
-        scale
-    );
+    // Do we have indices?
+    if(pSelf->pNumIndices > 0 && pSelf->pIndices != NULL) {
+        graphics->DrawFromVBOTranslationIndices(
+            graphics,
+            pSelf->private.MeshGpuHandle,
+            pSelf->pNumVertices,
+            pos, rot, scale,
+            pSelf->pIndices, pSelf->pNumIndices
+        );
+    }
+    else {
+        // Draw from VBO.
+        graphics->DrawFromVBOTranslation(
+            graphics, 
+            pSelf->private.MeshGpuHandle, 
+            pSelf->pNumVertices, 
+            pos, 
+            rot, 
+            scale
+        );
+    }
 
 }
 
@@ -67,13 +79,28 @@ void TestMesh_Draw(SELF, VGL3DContext* graphics) {
     graphics->BindTexture(graphics, pSelf->private.TextureGpuHandle);
 
     // Draw.
-    graphics->DrawFromVBO(graphics, pSelf->private.MeshGpuHandle, pSelf->pNumVertices);
+    if(pSelf->pNumIndices > 0 && pSelf->pIndices != NULL) {
+        vec3 zero = (vec3){0.f, 0.f, 0.f};
+        vec3 one = (vec3){1.f, 1.f, 1.f};
+        graphics->DrawFromVBOTranslationIndices(
+            graphics,
+            pSelf->private.MeshGpuHandle,
+            pSelf->pNumVertices,
+            zero, zero, one,
+            pSelf->pIndices, pSelf->pNumIndices
+        );
+    }
+    else graphics->DrawFromVBO(graphics, pSelf->private.MeshGpuHandle, pSelf->pNumVertices);
 }
 
 void TestMesh_DestroySelf(SELF) {
     if(pSelf != NULL && pSelf->pVertices != NULL) {
         free(pSelf->pVertices);
         pSelf->pNumVertices = 0;
+    }
+    if(pSelf != NULL && pSelf->pIndices != NULL) {
+        free(pSelf->pIndices);
+        pSelf->pNumIndices = 0;
     }
 }
 
@@ -210,8 +237,8 @@ int TestMesh_private_ReadMeshAt(SELF, cgltf_data* data, uint32_t index) {
 
     // Iterate primitives
     pSelf->Log(pSelf, "primitives count: %d", meshAt.primitives_count);
-    for(int i = 0; i < meshAt.primitives_count; i++) {
-        cgltf_primitive* prim = meshAt.primitives + i;
+    for(int indexMesh = 0; indexMesh < meshAt.primitives_count; indexMesh++) {
+        cgltf_primitive* prim = meshAt.primitives + indexMesh;
 
         char* primTypeStr = NULL;
         cgltf_primtype_tostr(prim->type, primTypeStr);
@@ -221,6 +248,7 @@ int TestMesh_private_ReadMeshAt(SELF, cgltf_data* data, uint32_t index) {
             prim->type
         );
 
+        /* ================= Indices =================== */
         const char* indicesBlobType = NULL;
         cgltf_accessor *indicesBlob = prim->indices;
         cgltf_accessor_type_tostr(indicesBlob->type, indicesBlobType);
@@ -228,55 +256,92 @@ int TestMesh_private_ReadMeshAt(SELF, cgltf_data* data, uint32_t index) {
         pSelf->Log(pSelf, "Indices: %u, (type-%s)", indicesBlob->count, indicesBlobType);
 
         // Alloc indices
-        //if(pSelf->pIndices != NULL) free(pSelf->pIndices);
-        pSelf->pIndices =   malloc(sizeof(uint32_t) * pSelf->pNumIndices);
+        if(pSelf->pIndices == NULL)     pSelf->pIndices = malloc(sizeof(uint32_t) * indicesBlob->count);
+        else                            pSelf->pIndices = realloc(pSelf->pIndices, sizeof(uint32_t) * indicesBlob->count);
         pSelf->pNumIndices = indicesBlob->count;
-        
-        for(int indices = 0; indices < indicesBlob->count; indices++) {
-            cgltf_uint indicesTest = 0;
-            cgltf_accessor_read_uint(indicesBlob, indices, &indicesTest, 1);
-            pSelf->pIndices[indices] = indicesTest;
-            pSelf->Log(pSelf, "\tIndex[%d]: %u (SPARSE: %d)", indices, indicesTest, indicesBlob->is_sparse);
+
+        // Validate indices
+        for(int testIndices = 0; testIndices < pSelf->pNumIndices; testIndices++) {
+            // Read in indices
+            cgltf_accessor_read_uint(indicesBlob, testIndices, &pSelf->pIndices[testIndices], 1);
+            pSelf->Log(pSelf, "\t\tIndex[%d]: %u", testIndices, pSelf->pIndices[testIndices]);
         }
+        /* ================= Indices =================== */
+
+        /* ================= Vertices =================== */
+        int peekedVerticesCount = prim->attributes[0].data->count;
+        pSelf->Log(pSelf, "Prim Attributes Count: %d", prim->attributes_count);
+        pSelf->Log(pSelf, "Peek Vertex Count: %d", peekedVerticesCount);
+
+        // Allocate vertices in advanced.
+        if(pSelf != NULL)       pSelf->pVertices = realloc(pSelf->pVertices, sizeof(Vertex) * peekedVerticesCount);
+        else                    pSelf->pVertices = malloc(sizeof(Vertex) * peekedVerticesCount);
+
+        memset(pSelf->pVertices, 0, sizeof(Vertex) * peekedVerticesCount);
+        pSelf->pNumVertices = peekedVerticesCount;
+        
 
         // Iterate attributes (POSITION, TEXCOORD0, etc.)
-        for(int p = 0; p < prim->attributes_count; p++) {
+        for(int indexPrimAttrib = 0; indexPrimAttrib < prim->attributes_count; indexPrimAttrib++) {
 
             // Grab cgltf attribute from the primitive.
-            cgltf_attribute* attrib = &prim->attributes[p];
+            cgltf_attribute* attrib = &prim->attributes[indexPrimAttrib];
             char *attribTypeStr = NULL;
             cgltf_attrib_type_tostr(attrib->type, attribTypeStr);
 
             // Grab the accessor that will let us get at the data ***hopefully*** cleanly.
-            cgltf_accessor* attribBlob = attrib->data;
+            cgltf_accessor* attribDataBlob = attrib->data;
             char* accStr = NULL;
-            cgltf_accessor_type_tostr(attribBlob->type, accStr);
-            pSelf->Log(pSelf, "\t\taccessor: %s - %d (%s) (sparse=%d)", attribBlob->name, attribBlob->type, accStr, attribBlob->is_sparse);
+            cgltf_accessor_type_tostr(attribDataBlob->type, accStr);
+            pSelf->Log(pSelf, "\t\taccessor: %s - %d (%s) (sparse=%d)", attribDataBlob->name, attribDataBlob->type, accStr, attribDataBlob->is_sparse);
             
             pSelf->Log(pSelf,
-                "\t\tattrib: %s (index=%d, data=%p, type='%s'(%d))",
+                "\t\tattrib: %s (index=%d, data=%p (count: %d), indexPrimAttrib type='%s'(%d))",
                 attrib->name,
                 attrib->index,
                 attrib->data,
+                attrib->data != NULL ? attrib->data->count : 0,
                 attribTypeStr,
                 attrib->type
             );
-            
-            // Juicy now.
-            Vertex* readVertices = malloc(sizeof(Vertex) * attribBlob->count);
-            memset(readVertices, 0, sizeof(Vertex) * attribBlob->count);
 
-            size_t attribBlobCnt = attribBlob->count;
-            pSelf->Log(pSelf, "\t\tAttribBlobCount=%u (isSparse: %d)", attribBlobCnt, attribBlob->is_sparse);
+            // Vertices already allocated. Let's iterate the attributes (POS, TEXCOORD, ETC.) and fill the values.
+            for(int iAttrib = 0; iAttrib < attribDataBlob->count; iAttrib++) {
+
+                if(iAttrib > pSelf->pNumVertices) {
+                    pSelf->Log(pSelf, "\t\tWARNING: iAttrib is greater than pSelf->pNumVertices (%d > %d)", iAttrib, pSelf->pNumVertices);
+                    continue;
+                }
+
+                // VERTEX DATA BEING READ IN HERE.
+                switch(attribDataBlob->type) {
+                    case cgltf_type_vec3:
+                        if(attrib->type != cgltf_attribute_type_position) break;
+
+                        cgltf_accessor_read_float(attribDataBlob, iAttrib, pSelf->pVertices[iAttrib].position, 3);
+                        break;
+                    default: break;
+                }
+            }
+            
+            /*
+            // Juicy now.
+            size_t readVertexBufferSize = sizeof(Vertex) * attribDataBlob->count;
+            Vertex* readVertices = malloc(readVertexBufferSize);
+            memset(readVertices, 0, readVertexBufferSize);
+
+            pSelf->Log(pSelf, "\tAllocated Vertex Buffer: %u", readVertexBufferSize);
+
+            size_t attribBlobCnt = attribDataBlob->count;
+            pSelf->Log(pSelf, "\t\tAttribBlobCount=%u (isSparse: %d)", attribBlobCnt, attribDataBlob->is_sparse);
             for(size_t iAttrib = 0; iAttrib < attribBlobCnt; iAttrib++) {
                 vec3 tempV = {0};
-                switch(attribBlob->type) {
+                switch(attribDataBlob->type) {
                     case cgltf_type_vec3:
                         if(attrib->type != cgltf_attribute_type_position) break;
                         
                         // Read directly into that vertex!
-                        // cgltf_accessor_read_float(attribBlob, iAttrib, &readVertices[iAttrib], 5);
-                        // assert(readVertices[iAttrib].position[0] == readVertices[iAttrib].x);
+                        cgltf_accessor_read_float(attribDataBlob, iAttrib, readVertices[iAttrib].position, 3);
 
                         pSelf->Log(pSelf,
                             "\t\t\t[%d] Vec3=(%.2f, %.2f, %.2f)", iAttrib,
@@ -285,15 +350,6 @@ int TestMesh_private_ReadMeshAt(SELF, cgltf_data* data, uint32_t index) {
                         break;
                     case cgltf_type_vec2:
                         if(attrib->type != cgltf_attribute_type_texcoord) break;
-
-                        // Read directly in!!!!
-                        // cgltf_accessor_read_float(attribBlob, iAttrib, readVertices[iAttrib].uv, 2);
-                        /*
-                        pSelf->Log(pSelf,
-                            "\t\t\t[%d] Vec2=(%.2f, %.2f)", iAttrib,
-                            readVertices[iAttrib].texCoordU, readVertices[iAttrib].texCoordV
-                        );
-                        */
                         break;
                     default:
                         break;
@@ -307,46 +363,21 @@ int TestMesh_private_ReadMeshAt(SELF, cgltf_data* data, uint32_t index) {
             pSelf->pVertices = readVertices;
             pSelf->pNumVertices = attribBlobCnt;
             pSelf->pHasChanged = 1;
+            */
         }
-    }
 
-    // Iterate data accessors.
-    // These *must* be for like...? I have no idea actually.
-    pSelf->Log(pSelf, "accessors count: %d", data->accessors_count);
-    for (int i = 0; i < data->accessors_count; i++) {
-        const cgltf_accessor* blob = data->accessors + i;
-        char* accStr = NULL;
-        cgltf_accessor_type_tostr(blob->type, accStr);
-        pSelf->Log(pSelf, "accessor: %s - %d (%s)", blob->name, blob->type, accStr);
-        
-        if(blob->is_sparse) {
-            pSelf->Log(pSelf, "\tSparse blob! Whatever that means LOL");
-            size_t nfloats = cgltf_num_components(blob->type) * blob->count;
-            cgltf_float* dense = (cgltf_float*)malloc(nfloats*sizeof(cgltf_float));
-            if(cgltf_accessor_unpack_floats(blob, dense, nfloats) < nfloats) {
-                pSelf->Log(pSelf, "\tWarning: Unable to fully unpack this sparse blob.");
-                free(dense);
-                return -1;
-            }
-
-            free(dense);
+        // Peek vertices
+        pSelf->Log(pSelf, "==== checking vertices ====");
+        for (int peekVertices = 0; peekVertices < pSelf->pNumVertices; peekVertices++)
+        {
+            pSelf->Log(pSelf, "Vertex[%d] = Vec3(%.2f, %.2f, %.2f)",
+                       peekVertices,
+                       pSelf->pVertices[peekVertices].x,
+                       pSelf->pVertices[peekVertices].y,
+                       pSelf->pVertices[peekVertices].z);
         }
-        else{
-
-            char* blobTypeStr = accStr;
-            char* blobCompTypeStr = NULL;
-
-            cgltf_component_type_tostr(blob->component_type, blobCompTypeStr);
-
-            vec3 v = {0};
-            switch(blob->component_type) {
-                case cgltf_component_type_r_32f:
-                    cgltf_accessor_read_float(blob, blob->offset + (i * blob->stride), v, 3);
-                    pSelf->Log(pSelf, "\t%s - blob->component_type=%s;val=(%.2f, %.2f, %.2f)", blobTypeStr, blobCompTypeStr, v[0], v[1], v[2]);
-                    break;
-                default:break;
-            }
-        }
+        pSelf->Log(pSelf, "==== done checking vertices ====");
+        /* ================= Vertices =================== */
     }
 
     return cgltf_result_success;
