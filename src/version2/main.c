@@ -5,12 +5,15 @@
 #include "input/tesla_input.h"
 #include "mesh/mesh.h"
 
-static inline float lerp(float a, float b, float f)
-{ return a + f * (b - a); }
 
 static float _CurTime = 0.0f;
 static uint8_t _OpType = 0;
 static int doSpin = 1;
+static TeslaMesh ExampleModel;
+static TeslaMesh CubeSkyboxThing;
+
+static inline float lerp(float a, float b, float f)
+{ return a + f * (b - a); }
 
 void doUpdate(VGL3DContext* context, float dt)
 {
@@ -68,10 +71,10 @@ void NetLogForVita_finished_private() {
 }
 
 #define NETLOG_VITA_FINISH() NetLogForVita_finished_private()
-#define VITA_EXAMPLE_TEXTURE    "app0:background2-1.png"
-#define VITA_EXAMPLE_TEXTURE2   "app0:block-26.png"
-#define VITA_IDENTITY_CUBE_GLB  "app0:unit_cube.glb"
-#define VITA_EXAMPLE_MESH_GLB   "app0:monkey.glb"
+#define VITA_EXAMPLE_TEXTURE     "app0:background2-1.png"
+#define VITA_EXAMPLE_TEXTURE2    "app0:block-26.png"
+#define VITA_IDENTITY_CUBE_GLB   "app0:unit_cube.glb"
+#define VITA_EXAMPLE_MESH_GLB    "app0:monkey.glb"
 #else
 // Empty define.
 #define NETLOG_VITA_FINISH()
@@ -189,13 +192,42 @@ void CheckInput_keyboard(TeslaKeyboardInput* kbdInput, VGL3DContext* graphics) {
 
     // Move x/z
     #define SPEED 30.f
-    if(kbdInput->IsKeyHeld(kbdInput, GLFW_KEY_UP )) {
-        manualCamPos[2] -= SPEED * (1 / 120.f);
-        graphics->SetCamera(graphics, manualCamPos, manualCamRot);
-    } else if(kbdInput->IsKeyHeld(kbdInput, GLFW_KEY_DOWN)) {
-        manualCamPos[2] += SPEED * (1 / 120.f);
-        graphics->SetCamera(graphics, manualCamPos, manualCamRot);
+    #define SPEED_VAL (SPEED) * (1 / 120.f)
+    #define UPDATE_CAM() graphics->SetCamera(graphics, manualCamPos, manualCamRot)
+
+    if(kbdInput->IsKeyHeld(kbdInput, GLFW_KEY_W )) {
+        manualCamPos[2] += SPEED_VAL;
+        UPDATE_CAM();
+    } else if(kbdInput->IsKeyHeld(kbdInput, GLFW_KEY_S)) {
+        manualCamPos[2] -= SPEED_VAL;
+        UPDATE_CAM();
     }
+
+    if(kbdInput->IsKeyHeld(kbdInput, GLFW_KEY_A)) {
+        manualCamPos[0] += SPEED_VAL;
+        UPDATE_CAM();
+    } else if(kbdInput->IsKeyHeld(kbdInput, GLFW_KEY_D)) {
+        manualCamPos[0] -= SPEED_VAL;
+        UPDATE_CAM();
+    }
+
+    if(kbdInput->IsKeyHeld(kbdInput, GLFW_KEY_LEFT)) {
+        manualCamRot[1] += SPEED_VAL;
+        UPDATE_CAM();
+    } else if(kbdInput->IsKeyHeld(kbdInput, GLFW_KEY_RIGHT)) {
+        manualCamRot[1] -= SPEED_VAL;
+        UPDATE_CAM();
+    }
+
+    if(kbdInput->IsKeyHeld(kbdInput, GLFW_KEY_UP)) {
+        manualCamRot[0] += SPEED_VAL;
+        UPDATE_CAM();
+    } else if(kbdInput->IsKeyHeld(kbdInput, GLFW_KEY_DOWN)) {
+        manualCamRot[0] -= SPEED_VAL;
+        UPDATE_CAM();
+    }
+
+    #undef SPEED_VAL
     #undef SPEED
 }
 #endif
@@ -210,49 +242,6 @@ void Test_CubeTest(VGL3DContext* graphics, VTEX thisTex) {
             DrawCube(graphics, (vec3){x * 1.0f, 0.f, z * 1.0f});
         }
     }
-}
-
-void Test_PerspectiveSwap_Update(VGL3DContext* graphics, VTEX thisTex) {
-    
-}
-
-static TeslaMesh ExampleModel;
-static TeslaMesh CubeSkyboxThing;
-void Test_PerspectiveSwap(VGL3DContext* graphics, VTEX thisTex) {
-    
-    /*
-    // TODO: Do something about this >.> 
-    // Add some getter functions or something.
-    const float w = 960.f;
-    const float h = 544.f;
-
-    // Render orthographic background.
-    graphics->SetProjectionType(graphics, VGL3D_PROJECTION_ORTHOGRAPHIC);
-    SetCamForProjType(graphics);
-    graphics->BindTexture(graphics, thisTex);
-    graphics->DrawQuad(
-        graphics, 
-        0.f,0.f,0.f, 
-        (vec3){0.f,0.f,0.f}, 
-        (vec3){w, h, 1.f},
-        (vec4){1.f,1.f,1.f,1.f}
-    );
-    */
-    
-    // Render Other tests on top.
-    
-    graphics->SetProjectionType(graphics, VGL3D_PROJECTION_PERSPECTIVE);
-    // SetCamForProjType(graphics);
-    
-    // Test_CubeTest(graphics, thisTex);
-    ExampleModel.Draw(&ExampleModel, graphics);
-
-    // doUpdate(graphics, 1 / 120.f);
-}
-
-
-void Test_MeshTest(VGL3DContext* graphics, const char* path) {
-    // TODO: Draw the mesh or smth.
 }
 
 int main() {
@@ -317,14 +306,16 @@ int main() {
         graphics.Clear(&graphics);
         graphics.Begin(&graphics);
 
+        #define SCALE 1.f
         ExampleModel.DrawTranslate(
             &ExampleModel, 
             &graphics, 
             (vec3){0.f, 0.f, 0.f}, 
             (vec3){0.f, 0.f, 0.f}, 
-            (vec3){1.f, 1.f, 1.f}
+            (vec3){SCALE, SCALE, SCALE}
         );
 
+        #undef SCALE
         #define SCALE 100.f
         CubeSkyboxThing.DrawTranslate(
             &CubeSkyboxThing,
@@ -332,7 +323,6 @@ int main() {
             (vec3){0.f, 0.f, 0.f},
             (vec3){0.f, 0.f, 0.f},
             (vec3){SCALE, SCALE, SCALE}
-            // (vec3){100.f, 100.f, 100.f}
         );
         #undef SCALE
 
