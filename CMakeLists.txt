@@ -37,7 +37,7 @@ endif()
 
 # Resource Handling
 
-file(GLOB_RECURSE resources "./*.png" "./*.cgv" "./*.cgf" "res/*.png" "res/*.frag" "res/*.vert" "res/*.glsl")
+file(GLOB_RECURSE resources "./*.gltf" "./*.glb" "./*.png" "./*.cgv" "./*.cgf" "res/*.png" "res/*.frag" "res/*.vert" "res/*.glsl")
 set(data_VPKSHADOW "")
 if(BUILD_VITA)
   foreach(resource ${resources})
