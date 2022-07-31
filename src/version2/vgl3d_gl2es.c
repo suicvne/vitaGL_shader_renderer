@@ -818,7 +818,6 @@ void VGL3D_DrawFromVBOTranslationIndices(SELF, uint32_t vboHandle, size_t nVerti
     glBindBuffer(GL_ARRAY_BUFFER, vboHandle);
     VGL3D_private_InitializeDefaultVertexAttribs(context, &model, (float*)white);
 
-    // glDrawElements(GL_TRIANGLES, nVertices, GL_UNSIGNED_INT, indices);
     glDrawElements(GL_TRIANGLES, nIndices, GL_UNSIGNED_INT, indices);
 }
 
