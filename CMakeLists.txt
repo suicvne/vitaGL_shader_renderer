@@ -27,6 +27,8 @@ set(VITA_APP_NAME "Vita Bob-Ombs")
 set(VITA_TITLEID  "BOMB00420")
 set(VITA_VERSION  "01.00")
 
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-initializer-overrides")
+
 if(BUILD_VITA)
   set(VITA_MKSFOEX_FLAGS "${VITA_MKSFOEX_FLAGS} -d PARENTAL_LEVEL=1")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DVITA -g -Wall -O0 -fno-lto -ftree-vectorize -Wno-missing-braces")
@@ -65,6 +67,7 @@ else()
   # So we can properly check for GLFW
   list(APPEND SRC_FILES
     src/version2/input/tesla_input_glfw.c
+    src/version2/input/tesla_input_gamepad_null.c
   )
 endif()
 

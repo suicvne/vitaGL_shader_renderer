@@ -23,28 +23,29 @@ int TKdb_InitBackend_glfw(SELF, GLFWwindow* existing);
 
 
 TeslaKeyboardInput TKbd_Create() {
-    TeslaKeyboardInput kdbInput = {
+    TeslaKeyboardInput kbdInput = {
         .PrivateData =  malloc(sizeof(TeslaKdbPrivate)),
+        .InitBackend =  (int (*)(struct _TeslaKeyboard *, struct _GLFWwindow *))TKdb_InitBackend_glfw,
         .DestroySelf =  TKdb_DestroySelf_glfw,
-        .Log =          TInput_Log,
         .PollInput =    TKdb_PollInput_glfw,
         .IsKeyDown =    TKdb_IsKeyDown_glfw,
         .IsKeyUp =      Tkbd_IsKeyUp_glfw,
         .IsKeyHeld =    Tkbd_IsKeyHeld_glfw,
-        .InitBackend =  TKdb_InitBackend_glfw,
     };
 
-    /*
-    kdbInput.PrivateData->keys = malloc(sizeof(uint32_t) * GLFW_KEY_LAST);
-    kdbInput.PrivateData->lastKeys = malloc(sizeof(uint32_t) * GLFW_KEY_LAST);
-    */
+    // kbdInput.pBase.Log = TInput_Log;
+
+    assert((void*)kbdInput.pBase.Log == (void*)kbdInput.Log);
+
+    // assert(kbdInput.pBase.InitBackend == kbdInput.InitBackend);
+    
 
     for(int i = 0; i < GLFW_KEY_LAST; i++) {
-        kdbInput.PrivateData->keys[i] = GLFW_RELEASE;
-        kdbInput.PrivateData->lastKeys[i] = GLFW_RELEASE;
+        kbdInput.PrivateData->keys[i] = GLFW_RELEASE;
+        kbdInput.PrivateData->lastKeys[i] = GLFW_RELEASE;
     }
 
-    return kdbInput;
+    return kbdInput;
 }
 
 // UGH
@@ -128,6 +129,9 @@ int TKdb_IsKeyDown_glfw(SELF, uint32_t key) {
 }
 
 int Tkbd_IsKeyHeld_glfw(SELF, uint32_t key) {
+    assert(context != NULL);
+    assert(key < GLFW_KEY_LAST);
+
     return context->PrivateData->keys[key] == GLFW_REPEAT;
 }
 

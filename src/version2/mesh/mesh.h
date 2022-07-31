@@ -19,23 +19,23 @@ typedef struct _Vertex {
     };
 } Vertex;
 
-struct _Mesh TestMesh_Create();
-int TestMesh_InitWithVertices(SELF, const Vertex* allocatedVertexData, size_t vertexCount);
-int TestMesh_InitWithDefaultCube(SELF);
-void TestMesh_DestroySelf(SELF);
-void TestMesh_Draw(SELF, VGL3DContext* graphics);
-void TestMesh_DrawTranslate(SELF, VGL3DContext* graphics, vec3 pos, vec3 rot, vec3 scale);
-int TestMesh_ReadGLTFAtPath(SELF, const char* path);
+struct _Mesh    TestMesh_Create();
+int             TestMesh_InitWithVertices(SELF, const Vertex* allocatedVertexData, size_t vertexCount);
+int             TestMesh_InitWithDefaultCube(SELF);
+void            TestMesh_DestroySelf(SELF);
+void            TestMesh_Draw(SELF, VGL3DContext* graphics);
+void            TestMesh_DrawTranslate(SELF, VGL3DContext* graphics, vec3 pos, vec3 rot, vec3 scale);
+int             TestMesh_ReadGLTFAtPath(SELF, const char* path);
 
 typedef struct _Mesh {
 
-    void (*Log)(SELF, const char* fmt, ...);
-    int (*InitWithVertices)(SELF, const Vertex* allocatedVertexData, size_t vertexDataSize);
-    int (*InitWithDefaultCube)(SELF);
-    void (*DestroySelf)(SELF);
-    void (*Draw)(SELF, VGL3DContext* graphics);
-    void (*DrawTranslate)(SELF, VGL3DContext* graphics, vec3 pos, vec3 rot, vec3 scale);
-    int (*ReadGLTFAtPath)(SELF, const char* path);
+    void        (*Log)(SELF, const char* fmt, ...);
+    int         (*InitWithVertices)(SELF, const Vertex* allocatedVertexData, size_t vertexDataSize);
+    int         (*InitWithDefaultCube)(SELF);
+    void        (*DestroySelf)(SELF);
+    void        (*Draw)(SELF, VGL3DContext* graphics);
+    void        (*DrawTranslate)(SELF, VGL3DContext* graphics, vec3 pos, vec3 rot, vec3 scale);
+    int         (*ReadGLTFAtPath)(SELF, const char* path);
 
     Vertex*     pVertices;
     uint32_t*   pIndices;
@@ -44,8 +44,8 @@ typedef struct _Mesh {
     uint8_t     pHasChanged;
 
     C_PRIVATE_BEGIN(TestMesh)
-    uint32_t MeshGpuHandle;
-    uint32_t TextureGpuHandle;
+    uint32_t    MeshGpuHandle;
+    uint32_t    TextureGpuHandle;
     C_PRIVATE_END;
     
 } TeslaMesh;

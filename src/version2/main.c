@@ -270,11 +270,20 @@ int main() {
     VTEX thisTex = graphics.LoadTextureAt(&graphics, VITA_EXAMPLE_TEXTURE);
     VTEX otherTex = graphics.LoadTextureAt(&graphics, VITA_EXAMPLE_TEXTURE2);
 
+
+    Input input;
     #ifndef VITA
     GLFWwindow* glfwWin = graphics.GetGlfwWindow(&graphics);
-    TeslaKeyboardInput keyboard = TKbd_Create();
-    keyboard.InitBackend(&keyboard, (struct _GLFWwindow*)glfwWin);
+    input = CommonInput_Create(INPUT_TYPE_KEYBOARD);
+    input.pKeyboard.InitBackend((TeslaKeyboardInput*)(&input), (struct _GLFWwindow*)glfwWin);
+    #else
+    input = CommonInput_Create(INPUT_TYPE_GAMEPAD);
+    input.pBase.InitBackend(&input);
     #endif
+
+
+
+
 
     // Test (create instances with fn ptrs assigned.)
     ExampleModel = TestMesh_Create();
@@ -302,9 +311,10 @@ int main() {
     while(graphics.private.doContinue)
     {
         /* =========== Update ============ */
+        input.pBase.PollInput(&input.pBase);
+
     #ifndef VITA
-        keyboard.PollInput(&keyboard);
-        CheckInput_keyboard(&keyboard, &graphics);
+        CheckInput_keyboard(&input.pKeyboard, &graphics);
     #endif
 
         // Update. TODO: actual time keeping
@@ -349,10 +359,7 @@ int main() {
     //  need to free the ExampleModel.
     ExampleModel.DestroySelf(&ExampleModel);
 
-    #ifndef VITA
-    // Free resources that keyboard may have needed to allocate.
-    keyboard.DestroySelf(&keyboard);
-    #endif
+    input.pBase.DestroySelf(&input.pBase);
 
     // Destroy created texture.
     graphics.DestroyTexture(&graphics, thisTex);
