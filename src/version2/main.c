@@ -18,18 +18,18 @@ static inline float lerp(float a, float b, float f)
 void doUpdate(VGL3DContext* context, float dt)
 {
     if(!doSpin) return;
-    if(_OpType == 0)
-        _CurTime += dt;
-    else _CurTime -= dt;
+    _CurTime += dt;
 
-    if(_CurTime > 1.0f || _CurTime < 0.0f)
-        _OpType = !_OpType;
+    if(_CurTime > 1.0f)
+        _CurTime = 0.f;
 
     // Manipulate the camera.
     vec3 closePos = {0.0f, 0.0f, -10.0f};
 
-    vec3 closeRot = { -30.0f, 0.0f, 0.0f };
-    vec3 farRot = { -20.0f, -360.f, 20.0f };
+    // vec3 closeRot = { -30.0f, 0.0f, 0.0f };
+    // vec3 farRot = { -20.0f, 360.f, 20.0f };
+    vec3 closeRot = { 0.0f, 0.0f, 0.0f };
+    vec3 farRot = { 0.0f, 360.f, 0.0f };
     vec3 lerpedRot = { 0 };
 
     glm_vec3_lerp(closeRot, farRot, _CurTime, lerpedRot);
@@ -227,6 +227,14 @@ void CheckInput_keyboard(TeslaKeyboardInput* kbdInput, VGL3DContext* graphics) {
         UPDATE_CAM();
     }
 
+    if(kbdInput->IsKeyHeld(kbdInput, GLFW_KEY_Z)) {
+        manualCamRot[2] += SPEED_VAL;
+        UPDATE_CAM();
+    } else if(kbdInput->IsKeyHeld(kbdInput, GLFW_KEY_X)) {
+        manualCamRot[2] -= SPEED_VAL;
+        UPDATE_CAM();
+    }
+
     #undef SPEED_VAL
     #undef SPEED
 }
@@ -278,6 +286,7 @@ int main() {
     CubeSkyboxThing.Log = NetLogForVita_private;
     #endif
 
+
     ExampleModel.Log(&ExampleModel, "Reading mesh from '%s'...", VITA_EXAMPLE_MESH_GLB);
     ExampleModel.ReadGLTFAtPath(&ExampleModel, VITA_EXAMPLE_MESH_GLB);
     ExampleModel.private.TextureGpuHandle = otherTex;
@@ -310,13 +319,14 @@ int main() {
         ExampleModel.DrawTranslate(
             &ExampleModel, 
             &graphics, 
-            (vec3){0.f, 0.f, 0.f}, 
+            (vec3){3.f, 0.f, 0.f}, 
             (vec3){0.f, 0.f, 0.f}, 
             (vec3){SCALE, SCALE, SCALE}
         );
 
+        
         #undef SCALE
-        #define SCALE 100.f
+        #define SCALE 1.f
         CubeSkyboxThing.DrawTranslate(
             &CubeSkyboxThing,
             &graphics,
@@ -325,6 +335,7 @@ int main() {
             (vec3){SCALE, SCALE, SCALE}
         );
         #undef SCALE
+        
 
 
         // Draw other shit here.

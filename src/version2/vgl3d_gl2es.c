@@ -348,7 +348,7 @@ void VGL3D_UpdateViewProjection_private(SELF, mat4* oModelMat) {
     glm_rotate_z(context->config->private.view, glm_rad(camEyeRot_p[2]), context->config->private.view);
 
     const float closePlane = 0.0001f;
-    const float farPlane   = 1000.f;
+    const float farPlane   = 100.f;
     switch(context->private.projectionMatrixType) {
         case VGL3D_PROJECTION_ORTHOGRAPHIC:
             glm_ortho(
@@ -596,11 +596,15 @@ int VGL3D_InitBackend(SELF) {
     glClearColor(0.f, 0.f, 0.5f, 1.0f);
 
     glEnable(GL_TEXTURE_2D);
-    glEnable(GL_BLEND);
-    glEnable(GL_DEPTH_TEST);
-    // glDepthFunc(GL_ALWAYS);
-    glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_DEPTH);
 
+    glEnable(GL_BLEND);
+    glDepthFunc(GL_EQUAL);
+
+    glEnable(GL_CULL_FACE);
+    glFrontFace(GL_CCW);
+
+    // glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glViewport(0,0,960,544);
 
     // Generate quadVbo
