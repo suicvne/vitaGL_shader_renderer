@@ -69,12 +69,14 @@ void NetLogForVita_finished_private() {
 
 #define NETLOG_VITA_FINISH() NetLogForVita_finished_private()
 #define VITA_EXAMPLE_TEXTURE    "app0:background2-1.png"
+#define VITA_EXAMPLE_TEXTURE2   "app0:block-26.png"
 #define VITA_IDENTITY_CUBE_GLB  "app0:unit_cube.glb"
 #define VITA_EXAMPLE_MESH_GLB   "app0:monkey.glb"
 #else
 // Empty define.
 #define NETLOG_VITA_FINISH()
 #define VITA_EXAMPLE_TEXTURE     "../background2-1.png"
+#define VITA_EXAMPLE_TEXTURE2    "../block-26.png"
 #define VITA_IDENTITY_CUBE_GLB   "../unit_cube.glb"
 #define VITA_EXAMPLE_MESH_GLB    "../monkey.glb"
 #endif
@@ -269,6 +271,7 @@ int main() {
     graphics.SetProjectionType(&graphics, VGL3D_PROJECTION_PERSPECTIVE);
 
     VTEX thisTex = graphics.LoadTextureAt(&graphics, VITA_EXAMPLE_TEXTURE);
+    VTEX otherTex = graphics.LoadTextureAt(&graphics, VITA_EXAMPLE_TEXTURE2);
 
     #ifndef VITA
     GLFWwindow* glfwWin = graphics.GetGlfwWindow(&graphics);
@@ -288,6 +291,7 @@ int main() {
 
     ExampleModel.Log(&ExampleModel, "Reading mesh from '%s'...", VITA_EXAMPLE_MESH_GLB);
     ExampleModel.ReadGLTFAtPath(&ExampleModel, VITA_EXAMPLE_MESH_GLB);
+    ExampleModel.private.TextureGpuHandle = otherTex;
 
     CubeSkyboxThing.Log(&CubeSkyboxThing, "Reading cube from '%s'...", VITA_IDENTITY_CUBE_GLB);
     // CubeSkyboxThing.InitWithDefaultCube(&CubeSkyboxThing);
