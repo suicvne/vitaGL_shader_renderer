@@ -67,11 +67,13 @@ void NetLogForVita_finished_private() {
 }
 
 #define NETLOG_VITA_FINISH() NetLogForVita_finished_private()
-#define VITA_EXAMPLE_TEXTURE "app0:background2-1.png"
+#define VITA_EXAMPLE_TEXTURE    "app0:background2-1.png"
+#define VITA_EXAMPLE_MESH_GLB   "app0:cone_test.glb"
 #else
 // Empty define.
 #define NETLOG_VITA_FINISH()
-#define VITA_EXAMPLE_TEXTURE "../background2-1.png"
+#define VITA_EXAMPLE_TEXTURE    "../background2-1.png"
+#define VITA_EXAMPLE_MESH_GLB   "../cone_test_gltf.gltf"
 #endif
 
 // TODO: Create method that offsets the model via the MVP.
@@ -157,6 +159,9 @@ void SetCamForProjType(VGL3DContext* graphics) {
     }
 }
 
+static vec3 manualCamPos = {0.f, 0.f, -10.f};
+static vec3 manualCamRot = {0};
+
 void CheckInput_keyboard(TeslaKeyboardInput* kbdInput, VGL3DContext* graphics) {
 
     // Spin Model 
@@ -177,9 +182,15 @@ void CheckInput_keyboard(TeslaKeyboardInput* kbdInput, VGL3DContext* graphics) {
     }
 
     // Move x/z
-    if(kbdInput->IsKeyHeld(kbdInput, GLFW_KEY_UP)) {
-        
+    #define SPEED 8.f
+    if(kbdInput->IsKeyHeld(kbdInput, GLFW_KEY_UP )) {
+        manualCamPos[2] -= SPEED * (1 / 120.f);
+        graphics->SetCamera(graphics, manualCamPos, manualCamRot);
+    } else if(kbdInput->IsKeyHeld(kbdInput, GLFW_KEY_DOWN)) {
+        manualCamPos[2] += SPEED * (1 / 120.f);
+        graphics->SetCamera(graphics, manualCamPos, manualCamRot);
     }
+    #undef SPEED
 }
 
 void Test_CubeTest(VGL3DContext* graphics, VTEX thisTex) {
@@ -232,9 +243,8 @@ void Test_PerspectiveSwap(VGL3DContext* graphics, VTEX thisTex) {
 }
 
 
-void Test_MeshTest(VGL3DContext* graphics) {
-    // TODO: Try loading an stl or obj or something.
-    // gltf????
+void Test_MeshTest(VGL3DContext* graphics, const char* path) {
+    // TODO: Draw the mesh or smth.
 }
 
 int main() {
@@ -261,8 +271,8 @@ int main() {
 
     // Test
     DefaultCube = TestMesh_Create();
-    DefaultCube.InitWithDefaultCube(&DefaultCube);
-    assert(DefaultCube.pNumVertices > 0);
+    DefaultCube.Log(&DefaultCube, "Reading mesh from '%s'...", VITA_EXAMPLE_MESH_GLB);
+    DefaultCube.ReadGLTFAtPath(&DefaultCube, VITA_EXAMPLE_MESH_GLB);
 
     // bump
     doUpdate(&graphics, 1 / 240.f);
@@ -279,10 +289,21 @@ int main() {
         /* =========== Graphics ============= */
         graphics.Clear(&graphics);
         graphics.Begin(&graphics);
+
+        /*
+        DefaultCube.DrawTranslate(&DefaultCube, 
+            &graphics, 
+            (vec3){0.f, 0.f, 0.f}, 
+            (vec3){0.f, 0.f, 0.f}, 
+            (vec3){0.12f, 0.12f, 0.12f});
+            */
+
+        DrawCube(&graphics, (vec3){2.0f, 0.f, 5 * 1.0f});
         
         // DefaultCube.Draw(&DefaultCube, &graphics);
         // Test_CubeTest(&graphics, thisTex);
-        Test_PerspectiveSwap(&graphics, thisTex);
+        // Test_PerspectiveSwap(&graphics, thisTex);
+
 
         // Draw other shit here.
 

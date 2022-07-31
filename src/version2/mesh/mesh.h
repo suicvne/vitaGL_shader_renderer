@@ -3,12 +3,20 @@
 
 #include <stdlib.h>
 #include "../vgl3d.h"
+#include "../common.h"
 
 #define SELF struct _Mesh* pSelf
 
 typedef struct _Vertex {
-    float x, y, z;
-    float texCoordU, texCoordV;
+    union {
+        vec3  position;
+        float x, y, z;
+    };
+
+    union {
+        vec2  uv;
+        float texCoordU, texCoordV;
+    };
 } Vertex;
 
 struct _Mesh TestMesh_Create();
@@ -17,16 +25,21 @@ int TestMesh_InitWithDefaultCube(SELF);
 void TestMesh_DestroySelf(SELF);
 void TestMesh_Draw(SELF, VGL3DContext* graphics);
 void TestMesh_DrawTranslate(SELF, VGL3DContext* graphics, vec3 pos, vec3 rot, vec3 scale);
+int TestMesh_ReadGLTFAtPath(SELF, const char* path);
 
 typedef struct _Mesh {
 
+    void (*Log)(SELF, const char* fmt, ...);
     int (*InitWithVertices)(SELF, const Vertex* allocatedVertexData, size_t vertexDataSize);
     int (*InitWithDefaultCube)(SELF);
     void (*DestroySelf)(SELF);
     void (*Draw)(SELF, VGL3DContext* graphics);
     void (*DrawTranslate)(SELF, VGL3DContext* graphics, vec3 pos, vec3 rot, vec3 scale);
+    int (*ReadGLTFAtPath)(SELF, const char* path);
 
     Vertex*     pVertices;
+    uint32_t*   pIndices;
+    size_t      pNumIndices;
     size_t      pNumVertices;
     uint8_t     pHasChanged;
 
@@ -36,6 +49,8 @@ typedef struct _Mesh {
     C_PRIVATE_END;
     
 } TeslaMesh;
+
+CREATE_LOG_FN(SELF, TestMesh, "MeshReader")
 
 #undef SELF
 

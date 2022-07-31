@@ -590,7 +590,7 @@ int VGL3D_InitBackend(SELF) {
     glEnable(GL_TEXTURE_2D);
     glEnable(GL_BLEND);
     glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_ALWAYS);
+    // glDepthFunc(GL_ALWAYS);
     glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     glViewport(0,0,960,544);
@@ -816,7 +816,19 @@ void VGL3D_DrawFromVBOTranslation(SELF, uint32_t vboHandle, size_t nVertices, ve
 
     glBindBuffer(GL_ARRAY_BUFFER, vboHandle);
     VGL3D_private_InitializeDefaultVertexAttribs(context, &model, (float*)white);
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, nVertices);
+
+    // Testing
+    // for(int i = 0; i < nVertices; i += 3) {
+        // glDrawArrays(GL_TRIANGLES, i * (sizeof(float) * VGL_COMPONENTS_PER_VERTEX), 3);
+    // }
+
+    // glDrawElements(GL_TRIANGLES, nVertices, GL_UNSIGNED_SHORT, 0);
+
+
+    // glDrawArrays(GL_TRIANGLES, 0, nVertices);
+
+    // glDrawArrays(GL_TRIANGLE_STRIP, 0, nVertices);
+    
 }
 
 void VGL3D_VBOBuffer(SELF, uint32_t vboHandle, const float* vertexData, size_t nVertices) {
