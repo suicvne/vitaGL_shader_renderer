@@ -48,7 +48,9 @@ vec3 camEyeRot_p = {0.0f, 0.0f, 0.0f};
 #define SELF VGL3DContext* context
 #endif
 
+#ifndef VITA
 GLFWwindow* VGL3D_GetGlfwWindow_glfw(SELF);
+#endif
 
 /**
  * @brief Creates a VGL3DContext on the stack.
@@ -84,7 +86,6 @@ inline VGL3DContext VGL3D_Create()
         .DestroyBackend =                VGL3D_DestroyBackend,
         .DestroySelf =                   VGL3D_DestroySelf,
         .DestroyTexture =                VGL3D_DestroyTexture,
-        .GetGlfwWindow =                 VGL3D_GetGlfwWindow_glfw,
         .CreateVBOWithVertexData =       VGL3D_CreateVBOWithVertexData,
         .SetProjectionType =             VGL3D_SetProjectionType,
         .DrawFromVBOTranslation =        VGL3D_DrawFromVBOTranslation,
@@ -94,7 +95,10 @@ inline VGL3DContext VGL3D_Create()
             .drawingInProgress = 0,
             .doContinue = 1,
             .projectionMatrixType = VGL3D_PROJECTION_IDENTITY
-        }
+        },
+        #ifndef VITA
+        .GetGlfwWindow =                 VGL3D_GetGlfwWindow_glfw,
+        #endif
     };
 
     newContext.config->game_window_width = 960.f;
@@ -108,9 +112,11 @@ inline VGL3DContext VGL3D_Create()
     return newContext;
 }
 
+#ifndef VITA
 GLFWwindow* VGL3D_GetGlfwWindow_glfw(SELF) {
     return context->config->game_window;
 }
+#endif
 
 /**
  * @brief Binds a texture given a VGL3DContext and VTEX texture.
@@ -591,7 +597,7 @@ int VGL3D_InitBackend(SELF) {
 
     glEnable(GL_TEXTURE_2D);
     glEnable(GL_BLEND);
-    // glEnable(GL_DEPTH_TEST);
+    glEnable(GL_DEPTH_TEST);
     // glDepthFunc(GL_ALWAYS);
     glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
@@ -793,7 +799,7 @@ void VGL3D_DrawFromVBO(SELF, uint32_t vboHandle, size_t nVertices) {
 
     mat4 model = GLM_MAT4_IDENTITY_INIT;
     const float scale = 0.5f;
-    const vec4 white = (const vec4){1.0f, 1.0, 1.0f, 1.0f};
+    vec4 white = {1.0f, 1.0, 1.0f, 1.0f};
     glm_scale(model, (vec3){scale,scale,scale});
 
     VGL3D_UpdateViewProjection_private(context, &model);
@@ -805,7 +811,7 @@ void VGL3D_DrawFromVBO(SELF, uint32_t vboHandle, size_t nVertices) {
 
 void VGL3D_DrawFromVBOTranslationIndices(SELF, uint32_t vboHandle, size_t nVertices, vec3 pos, vec3 rot, vec3 scale, uint32_t* indices, size_t nIndices) {
     mat4 model = GLM_MAT4_IDENTITY_INIT;
-    const vec4 white = (const vec4){1.0f, 1.0, 1.0f, 1.0f};
+    vec4 white = {1.0f, 1.0, 1.0f, 1.0f};
     // TRS -> Translate, Rotate, Scale
     glm_translate(model, pos);
     glm_rotate_x(model, rot[0], model);
@@ -824,7 +830,7 @@ void VGL3D_DrawFromVBOTranslationIndices(SELF, uint32_t vboHandle, size_t nVerti
 void VGL3D_DrawFromVBOTranslation(SELF, uint32_t vboHandle, size_t nVertices, vec3 pos, vec3 rot, vec3 scale) {
 
     mat4 model = GLM_MAT4_IDENTITY_INIT;
-    const vec4 white = (const vec4){1.0f, 1.0, 1.0f, 1.0f};
+    vec4 white = {1.0f, 1.0, 1.0f, 1.0f};
     // TRS -> Translate, Rotate, Scale
     glm_translate(model, pos);
     glm_rotate_x(model, rot[0], model);
@@ -837,18 +843,8 @@ void VGL3D_DrawFromVBOTranslation(SELF, uint32_t vboHandle, size_t nVertices, ve
     glBindBuffer(GL_ARRAY_BUFFER, vboHandle);
     VGL3D_private_InitializeDefaultVertexAttribs(context, &model, (float*)white);
 
-    // Testing
-    // for(int i = 0; i < nVertices; i += 3) {
-        // glDrawArrays(GL_TRIANGLES, i * (sizeof(float) * VGL_COMPONENTS_PER_VERTEX), 3);
-    // }
-
-    // glDrawElements(GL_TRIANGLES, nVertices, GL_UNSIGNED_SHORT, 0);
-
-
-    glDrawArrays(GL_TRIANGLES, 0, nVertices);
-
-    // glDrawArrays(GL_TRIANGLE_STRIP, 0, nVertices);
-    
+    // Draw the arrays as is.
+    glDrawArrays(GL_TRIANGLES, 0, nVertices);    
 }
 
 void VGL3D_VBOBuffer(SELF, uint32_t vboHandle, const float* vertexData, size_t nVertices) {

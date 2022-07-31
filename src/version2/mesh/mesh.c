@@ -80,8 +80,8 @@ void TestMesh_Draw(SELF, VGL3DContext* graphics) {
 
     // Draw.
     if(pSelf->pNumIndices > 0 && pSelf->pIndices != NULL) {
-        vec3 zero = (vec3){0.f, 0.f, 0.f};
-        vec3 one = (vec3){1.f, 1.f, 1.f};
+        vec3 zero = {0.f, 0.f, 0.f};
+        vec3 one = {1.f, 1.f, 1.f};
         graphics->DrawFromVBOTranslationIndices(
             graphics,
             pSelf->private.MeshGpuHandle,
@@ -126,62 +126,83 @@ int TestMesh_InitWithVertices(SELF, const Vertex* allocatedVertexData, size_t ve
     return 0;
 }
 
-#define MESH_CUBE_VB_LENGTH 36
-static const Vertex pVertexBufferData[] = {
-    //      pos (xyz)                   (texCoordU/V)
-    (Vertex){-1.0f,-1.0f,-1.0f,       0.0f, 1.0f},      // triangle 1 : begin
-    (Vertex){-1.0f,-1.0f, 1.0f,       0.0f, 0.0f},
-    (Vertex){-1.0f, 1.0f, 1.0f,       1.0f, 0.0f},      // triangle 1 : end
-    (Vertex){1.0f, 1.0f,-1.0f,        0.0f, 1.0f},      // triangle 2 : begin
-    (Vertex){-1.0f,-1.0f,-1.0f,       0.0f, 0.0f},
-    (Vertex){-1.0f, 1.0f,-1.0f,       1.0f, 0.0f},      // triangle 2 : end
-    (Vertex){1.0f,-1.0f, 1.0f,        0.0f, 1.0f},
-    (Vertex){-1.0f,-1.0f,-1.0f,       0.0f, 0.0f},
-    (Vertex){1.0f,-1.0f,-1.0f,        1.0f, 0.0f},
-    (Vertex){1.0f, 1.0f,-1.0f,        0.0f, 1.0f},
-    (Vertex){1.0f,-1.0f,-1.0f,        0.0f, 0.0f},
-    (Vertex){-1.0f,-1.0f,-1.0f,       1.0f, 0.0f},
-    (Vertex){-1.0f,-1.0f,-1.0f,       0.0f, 1.0f},
-    (Vertex){-1.0f, 1.0f, 1.0f,       0.0f, 0.0f},
-    (Vertex){-1.0f, 1.0f,-1.0f,       1.0f, 0.0f},
-    (Vertex){1.0f,-1.0f, 1.0f,        0.0f, 1.0f},
-    (Vertex){-1.0f,-1.0f, 1.0f,       0.0f, 0.0f},
-    (Vertex){-1.0f,-1.0f,-1.0f,       1.0f, 0.0f},
-    (Vertex){-1.0f, 1.0f, 1.0f,       0.0f, 1.0f},
-    (Vertex){-1.0f,-1.0f, 1.0f,       0.0f, 0.0f},
-    (Vertex){1.0f,-1.0f, 1.0f,        1.0f, 0.0f},
-    (Vertex){1.0f, 1.0f, 1.0f,        0.0f, 1.0f},
-    (Vertex){1.0f,-1.0f,-1.0f,        0.0f, 0.0f},
-    (Vertex){1.0f, 1.0f,-1.0f,        1.0f, 0.0f},
-    (Vertex){1.0f,-1.0f,-1.0f,        0.0f, 1.0f},
-    (Vertex){1.0f, 1.0f, 1.0f,        0.0f, 0.0f},
-    (Vertex){1.0f,-1.0f, 1.0f,        1.0f, 0.0f},
-    (Vertex){1.0f, 1.0f, 1.0f,        0.0f, 1.0f},
-    (Vertex){1.0f, 1.0f,-1.0f,        0.0f, 0.0f},
-    (Vertex){-1.0f, 1.0f,-1.0f,       1.0f, 0.0f},
-    (Vertex){1.0f, 1.0f, 1.0f,        0.0f, 1.0f},
-    (Vertex){-1.0f, 1.0f,-1.0f,       0.0f, 0.0f},
-    (Vertex){-1.0f, 1.0f, 1.0f,       1.0f, 0.0f},
-    (Vertex){1.0f, 1.0f, 1.0f,        0.0f, 1.0f},
-    (Vertex){-1.0f, 1.0f, 1.0f,       0.0f, 0.0f},
-    (Vertex){1.0f,-1.0f, 1.0f,        1.0f, 0.0f},
+#define MESH_CUBE_VB_LENGTH 24
+const static Vertex pVertexBufferData[] = {
+	{-1.00, -1.00, -1.00,		0.38, 0.38},
+	{-1.00, -1.00, -1.00,		0.12, 0.12},
+	{-1.00, -1.00, -1.00,		0.38, 0.38},
+	{-1.00, -1.00, -1.00,		0.62, 0.62},
+	{-1.00, -1.00, -1.00,		0.62, 0.62},
+	{-1.00, -1.00, -1.00,		0.88, 0.88},
+	{-1.00, -1.00, -1.00,		0.38, 0.38},
+	{-1.00, -1.00, -1.00,		0.12, 0.12},
+	{-1.00, -1.00, -1.00,		0.38, 0.38},
+	{-1.00, -1.00, -1.00,		0.62, 0.62},
+	{-1.00, -1.00, -1.00,		0.62, 0.62},
+	{-1.00, -1.00, -1.00,		0.88, 0.88},
+	{1.00, 1.00, 1.00,		0.38, 0.38},
+	{1.00, 1.00, 1.00,		0.38, 0.38},
+	{1.00, 1.00, 1.00,		0.38, 0.38},
+	{1.00, 1.00, 1.00,		0.62, 0.62},
+	{1.00, 1.00, 1.00,		0.62, 0.62},
+	{1.00, 1.00, 1.00,		0.62, 0.62},
+	{1.00, 1.00, 1.00,		0.38, 0.38},
+	{1.00, 1.00, 1.00,		0.38, 0.38},
+	{1.00, 1.00, 1.00,		0.38, 0.38},
+	{1.00, 1.00, 1.00,		0.62, 0.62},
+	{1.00, 1.00, 1.00,		0.62, 0.62},
+	{1.00, 1.00, 1.00,		0.62, 0.62},
 };
+
+#define MESH_CUBE_IB_LENGTH 36
+const static uint32_t pVertexBufferIndexData[] = {
+	0,3,9,
+	0,9,6,
+	8,10,21,
+	8,21,19,
+	20,23,17,
+	20,17,14,
+	13,15,4,
+	13,4,2,
+	7,18,12,
+	7,12,1,
+	22,11,5,
+	22,5,16,
+};
+
 
 // TODO: Rename this to default *****quad******
 int TestMesh_InitWithDefaultCube(SELF) {
 
+    // TODO: Optimizations to prevent re-initializing the default cube
+    // vbo if it already exists.
+
     // Initailize with the data, 36 vertices.
     pSelf->InitWithVertices(pSelf, pVertexBufferData, MESH_CUBE_VB_LENGTH);
 
+    // TODO: InitWithVerticesAndIndices() function
+
+    // Realloc pIndices if necessary.
+    if(pSelf->pIndices != NULL)     pSelf->pIndices = realloc(pSelf->pIndices, sizeof(uint32_t) * MESH_CUBE_IB_LENGTH);
+    else                            pSelf->pIndices = malloc(sizeof(uint32_t) * MESH_CUBE_IB_LENGTH);
+
+    // Copy default index data.
+    memcpy(pSelf->pIndices, pVertexBufferIndexData, sizeof(uint32_t) * MESH_CUBE_IB_LENGTH);
+    pSelf->pNumIndices =    MESH_CUBE_IB_LENGTH;
+
+    pSelf->pHasChanged = 1;
+
     return 0;
 }
+
+/* ==================================== BEGIN CGLTF ======================================= */
 
 #define STR_VALUE(arg) #arg
 #define cgltf_primtype_tostr(PRIMTYPE, STORAGE)\
 switch(PRIMTYPE) {\
     case cgltf_primitive_type_points:                   break;\
 	case cgltf_primitive_type_lines:                   STORAGE = STR_VALUE(cgltf_primitive_type_lines); break;\
-	case cgltf_primitive_type_line_loop:               STORAGE = STR_VALUE(PRIMcgltf_primitive_type_line_loopTYPE); break;\
+	case cgltf_primitive_type_line_loop:               STORAGE = STR_VALUE(cgltf_primitive_type_line_loop); break;\
 	case cgltf_primitive_type_line_strip:              STORAGE = STR_VALUE(cgltf_primitive_type_line_strip); break;\
 	case cgltf_primitive_type_triangles:               STORAGE = STR_VALUE(cgltf_primitive_type_triangles); break;\
 	case cgltf_primitive_type_triangle_strip:          STORAGE = STR_VALUE(cgltf_primitive_type_triangle_strip); break;\
@@ -226,162 +247,8 @@ switch((AT)){\
     case cgltf_attribute_type_joints:           (STORAGE) = STR_VALUE(cgltf_attribute_type_joints);      break;\
     case cgltf_attribute_type_weights:          (STORAGE) = STR_VALUE(cgltf_attribute_type_weights);     break;\
     case cgltf_attribute_type_custom:           (STORAGE) = STR_VALUE(cgltf_attribute_type_custom);      break;\
-    case cgltf_attribute_type_max_enum:         (STORAGE) = STR_VALUE(cgltf_attribute_type_max_enum);    break;\
     default:                                    (STORAGE) = "UNKNOWN!";                                  break;\
 }\
-
-int TestMesh_private_ReadMeshAt(SELF, cgltf_data* data, uint32_t index) {
-    if(data == NULL) return -1;
-
-    cgltf_mesh meshAt = data->meshes[index];
-
-    // Iterate primitives
-    pSelf->Log(pSelf, "primitives count: %d", meshAt.primitives_count);
-    for(int indexMesh = 0; indexMesh < meshAt.primitives_count; indexMesh++) {
-        cgltf_primitive* prim = meshAt.primitives + indexMesh;
-
-        char* primTypeStr = NULL;
-        cgltf_primtype_tostr(prim->type, primTypeStr);
-        pSelf->Log(pSelf, 
-            "\tprimitive: %s (type=%d)", 
-            primTypeStr,
-            prim->type
-        );
-
-        /* ================= Indices =================== */
-        const char* indicesBlobType = NULL;
-        cgltf_accessor *indicesBlob = prim->indices;
-        cgltf_accessor_type_tostr(indicesBlob->type, indicesBlobType);
-
-        pSelf->Log(pSelf, "Indices: %u, (type-%s)", indicesBlob->count, indicesBlobType);
-
-        // Alloc indices
-        if(pSelf->pIndices == NULL)     pSelf->pIndices = malloc(sizeof(uint32_t) * indicesBlob->count);
-        else                            pSelf->pIndices = realloc(pSelf->pIndices, sizeof(uint32_t) * indicesBlob->count);
-        pSelf->pNumIndices = indicesBlob->count;
-
-        // Validate indices
-        for(int testIndices = 0; testIndices < pSelf->pNumIndices; testIndices++) {
-            // Read in indices
-            cgltf_accessor_read_uint(indicesBlob, testIndices, &pSelf->pIndices[testIndices], 1);
-            pSelf->Log(pSelf, "\t\tIndex[%d]: %u", testIndices, pSelf->pIndices[testIndices]);
-        }
-        /* ================= Indices =================== */
-
-        /* ================= Vertices =================== */
-        int peekedVerticesCount = prim->attributes[0].data->count;
-        pSelf->Log(pSelf, "Prim Attributes Count: %d", prim->attributes_count);
-        pSelf->Log(pSelf, "Peek Vertex Count: %d", peekedVerticesCount);
-
-        // Allocate vertices in advanced.
-        if(pSelf != NULL)       pSelf->pVertices = realloc(pSelf->pVertices, sizeof(Vertex) * peekedVerticesCount);
-        else                    pSelf->pVertices = malloc(sizeof(Vertex) * peekedVerticesCount);
-
-        memset(pSelf->pVertices, 0, sizeof(Vertex) * peekedVerticesCount);
-        pSelf->pNumVertices = peekedVerticesCount;
-        
-
-        // Iterate attributes (POSITION, TEXCOORD0, etc.)
-        for(int indexPrimAttrib = 0; indexPrimAttrib < prim->attributes_count; indexPrimAttrib++) {
-
-            // Grab cgltf attribute from the primitive.
-            cgltf_attribute* attrib = &prim->attributes[indexPrimAttrib];
-            char *attribTypeStr = NULL;
-            cgltf_attrib_type_tostr(attrib->type, attribTypeStr);
-
-            // Grab the accessor that will let us get at the data ***hopefully*** cleanly.
-            cgltf_accessor* attribDataBlob = attrib->data;
-            char* accStr = NULL;
-            cgltf_accessor_type_tostr(attribDataBlob->type, accStr);
-            pSelf->Log(pSelf, "\t\taccessor: %s - %d (%s) (sparse=%d)", attribDataBlob->name, attribDataBlob->type, accStr, attribDataBlob->is_sparse);
-            
-            pSelf->Log(pSelf,
-                "\t\tattrib: %s (index=%d, data=%p (count: %d), indexPrimAttrib type='%s'(%d))",
-                attrib->name,
-                attrib->index,
-                attrib->data,
-                attrib->data != NULL ? attrib->data->count : 0,
-                attribTypeStr,
-                attrib->type
-            );
-
-            // Vertices already allocated. Let's iterate the attributes (POS, TEXCOORD, ETC.) and fill the values.
-            for(int iAttrib = 0; iAttrib < attribDataBlob->count; iAttrib++) {
-
-                if(iAttrib > pSelf->pNumVertices) {
-                    pSelf->Log(pSelf, "\t\tWARNING: iAttrib is greater than pSelf->pNumVertices (%d > %d)", iAttrib, pSelf->pNumVertices);
-                    continue;
-                }
-
-                // VERTEX DATA BEING READ IN HERE.
-                switch(attribDataBlob->type) {
-                    case cgltf_type_vec3:
-                        if(attrib->type != cgltf_attribute_type_position) break;
-
-                        cgltf_accessor_read_float(attribDataBlob, iAttrib, pSelf->pVertices[iAttrib].position, 3);
-                        break;
-                    default: break;
-                }
-            }
-            
-            /*
-            // Juicy now.
-            size_t readVertexBufferSize = sizeof(Vertex) * attribDataBlob->count;
-            Vertex* readVertices = malloc(readVertexBufferSize);
-            memset(readVertices, 0, readVertexBufferSize);
-
-            pSelf->Log(pSelf, "\tAllocated Vertex Buffer: %u", readVertexBufferSize);
-
-            size_t attribBlobCnt = attribDataBlob->count;
-            pSelf->Log(pSelf, "\t\tAttribBlobCount=%u (isSparse: %d)", attribBlobCnt, attribDataBlob->is_sparse);
-            for(size_t iAttrib = 0; iAttrib < attribBlobCnt; iAttrib++) {
-                vec3 tempV = {0};
-                switch(attribDataBlob->type) {
-                    case cgltf_type_vec3:
-                        if(attrib->type != cgltf_attribute_type_position) break;
-                        
-                        // Read directly into that vertex!
-                        cgltf_accessor_read_float(attribDataBlob, iAttrib, readVertices[iAttrib].position, 3);
-
-                        pSelf->Log(pSelf,
-                            "\t\t\t[%d] Vec3=(%.2f, %.2f, %.2f)", iAttrib,
-                            readVertices[iAttrib].x, readVertices[iAttrib].y, readVertices[iAttrib].z
-                        );
-                        break;
-                    case cgltf_type_vec2:
-                        if(attrib->type != cgltf_attribute_type_texcoord) break;
-                        break;
-                    default:
-                        break;
-                }
-            }
-
-
-            if(pSelf->pVertices != NULL)
-                free(pSelf->pVertices);
-            
-            pSelf->pVertices = readVertices;
-            pSelf->pNumVertices = attribBlobCnt;
-            pSelf->pHasChanged = 1;
-            */
-        }
-
-        // Peek vertices
-        pSelf->Log(pSelf, "==== checking vertices ====");
-        for (int peekVertices = 0; peekVertices < pSelf->pNumVertices; peekVertices++)
-        {
-            pSelf->Log(pSelf, "Vertex[%d] = Vec3(%.2f, %.2f, %.2f)",
-                       peekVertices,
-                       pSelf->pVertices[peekVertices].x,
-                       pSelf->pVertices[peekVertices].y,
-                       pSelf->pVertices[peekVertices].z);
-        }
-        pSelf->Log(pSelf, "==== done checking vertices ====");
-        /* ================= Vertices =================== */
-    }
-
-    return cgltf_result_success;
-}
 
 #define cgltf_result_tostr(RESULT, STORAGE)\
 switch((RESULT)){\
@@ -398,26 +265,223 @@ switch((RESULT)){\
     default:                              (STORAGE) = "UNKNOWN!";                                 break;\
 }\
 
+// Just prints to stdout
+void TestMesh_private_toCArr(SELF) {
+
+    if(pSelf->pNumVertices > 100) return;
+
+    pSelf->Log(pSelf, "const static Vertex pVertexBufferData[] = {");
+    for(int i = 0; i < pSelf->pNumVertices; i++) {
+        Vertex thisVert = pSelf->pVertices[i];
+        pSelf->Log(pSelf, "\t{%.2f, %.2f, %.2f,\t\t%.2f, %.2f},",
+            thisVert.x, thisVert.y, thisVert.z,
+            thisVert.texCoordU, thisVert.texCoordV
+        );
+    }
+    pSelf->Log(pSelf, "};");
+
+
+    pSelf->Log(pSelf, "const static uint32_t pVertexBufferIndexData[] = {");
+    for(int i = 0; i < pSelf->pNumIndices; (void)i) {
+
+        pSelf->Log(pSelf, "\t%u,%u,%u,",
+            pSelf->pIndices[i],
+            pSelf->pIndices[i + 1],
+            pSelf->pIndices[i + 2]
+        );
+
+        i += 3;
+    }
+    pSelf->Log(pSelf, "};");
+}
+
+/**
+ * @brief O(too many)
+ * 
+ * @param data 
+ * @param index 
+ * @return int 
+ */
+int TestMesh_private_ReadMeshAt(SELF, cgltf_data* data, uint32_t index) {
+    if(data == NULL) return -1;
+
+    // Just grab the mesh specified instead of trying to iterate.
+    // For now.....
+    cgltf_mesh meshAt = data->meshes[index];
+
+    // #ifdef MESH_PRINT_GLTF_DATA
+    pSelf->Log(pSelf, "Mesh: %s", meshAt.name);
+    pSelf->Log(pSelf, "\tprimitives count: %d", meshAt.primitives_count);
+    // #endif
+
+    // Iterate over the primitives in the mesh.
+    for(int indexMesh = 0; indexMesh < meshAt.primitives_count; indexMesh++) {
+        // Get prim type.
+        cgltf_primitive* prim = meshAt.primitives + indexMesh;
+        char* primTypeStr = NULL;
+        cgltf_primtype_tostr(prim->type, primTypeStr);
+
+        // Keep it simple by only supporting triangle prims for now.
+        if(prim->type != cgltf_primitive_type_triangles)
+        {
+            pSelf->Log(pSelf, "\tWARNING: Skipping currently unsupported prim type '%s'", primTypeStr);
+            continue;
+        }
+
+        // #ifdef MESH_PRINT_GLTF_DATA
+        pSelf->Log(pSelf, 
+            "\t\tprimitive: %s (type=%d)", 
+            primTypeStr,
+            prim->type
+        );
+        // #endif
+
+        // First, let's grab the render indices for this mesh.
+        /* ================= Indices =================== */
+        const char* indicesBlobType = NULL;
+        cgltf_accessor *indicesBlob = prim->indices;
+        cgltf_accessor_type_tostr(indicesBlob->type, indicesBlobType);
+
+        pSelf->Log(pSelf, "\t\tIndices: %u, (type-%s)", indicesBlob->count, indicesBlobType);
+
+        // Alloc indices
+        if(pSelf->pIndices == NULL)     pSelf->pIndices = malloc(sizeof(uint32_t) * indicesBlob->count);
+        else                            pSelf->pIndices = realloc(pSelf->pIndices, sizeof(uint32_t) * indicesBlob->count);
+        pSelf->pNumIndices = indicesBlob->count;
+
+        
+        // Validate indices
+        for(int testIndices = 0; testIndices < pSelf->pNumIndices; testIndices++) {
+            // Read in indices
+            cgltf_accessor_read_uint(indicesBlob, testIndices, &pSelf->pIndices[testIndices], 1);
+        #ifdef MESH_PRINT_GLTF_DATA_INDICES
+            pSelf->Log(pSelf, "\t\t\tIndex[%d]: %u", testIndices, pSelf->pIndices[testIndices]);
+        #endif
+        }
+        /* ================= Indices =================== */
+
+        // Second, let's grab the vertex data from the primitive's attributes.
+        /* ================= Vertices =================== */
+        int peekedVerticesCount = prim->attributes[0].data->count;
+        pSelf->Log(pSelf, "\t\tPrim Attributes Count: %d (Peeked Vertex Count: %d)", prim->attributes_count, peekedVerticesCount);
+
+        // Allocate vertices in advanced.
+        if(pSelf != NULL)       pSelf->pVertices = realloc(pSelf->pVertices, sizeof(Vertex) * peekedVerticesCount);
+        else                    pSelf->pVertices = malloc(sizeof(Vertex) * peekedVerticesCount);
+
+        memset(pSelf->pVertices, 0, sizeof(Vertex) * peekedVerticesCount);
+        pSelf->pNumVertices = peekedVerticesCount;
+        
+        // Iterate attributes (POSITION, TEXCOORD0, etc.)
+        for(int indexPrimAttrib = 0; indexPrimAttrib < prim->attributes_count; indexPrimAttrib++) {
+
+            // Grab cgltf attribute from the primitive.
+            cgltf_attribute* attrib = &prim->attributes[indexPrimAttrib];
+            char *attribTypeStr = NULL;
+            cgltf_attrib_type_tostr(attrib->type, attribTypeStr);
+
+            // Grab the accessor that will let us get at the data ***hopefully*** cleanly.
+            cgltf_accessor* attribDataBlob = attrib->data;
+            char* accStr = NULL;
+            cgltf_accessor_type_tostr(attribDataBlob->type, accStr);
+            pSelf->Log(pSelf, "\t\t\tattrib accessor: %s - %d (%s) (sparse=%d)", attribDataBlob->name, attribDataBlob->type, accStr, attribDataBlob->is_sparse);
+            
+            pSelf->Log(pSelf,
+                "\t\t\t\tattrib: %s (index=%d, data=%p (count: %d), indexPrimAttrib type='%s'(%d))",
+                attrib->name,
+                attrib->index,
+                attrib->data,
+                attrib->data != NULL ? attrib->data->count : 0,
+                attribTypeStr,
+                attrib->type
+            );
+
+            // Vertices already allocated. Let's iterate the attributes (POS, TEXCOORD, ETC.) and fill the values.
+            // So, we are iterating over the *values* in this attribute.
+            for(int iAttrib = 0; iAttrib < attribDataBlob->count; iAttrib++) {
+
+                if(iAttrib > pSelf->pNumVertices) {
+                    pSelf->Log(pSelf, "\t\t\t\tWARNING: iAttrib is greater than pSelf->pNumVertices (%d > %d)", iAttrib, pSelf->pNumVertices);
+                    continue;
+                }
+
+                // VERTEX DATA BEING READ IN HERE.
+                switch(attribDataBlob->type) {
+                    case cgltf_type_vec3:
+                        if(attrib->type != cgltf_attribute_type_position) {
+                            // pSelf->Log(pSelf, "\t\t\t\tUnhandled Attrib Type: %s which is type %s", attribTypeStr, accStr); 
+                            break;
+                        }
+                        cgltf_accessor_read_float(attribDataBlob, iAttrib, pSelf->pVertices[iAttrib].position, 3);
+
+                        // TODO: Normals.
+
+                        break;
+                    case cgltf_type_vec2:
+                        if(attrib->type != cgltf_attribute_type_texcoord) break;
+                        cgltf_accessor_read_float(attribDataBlob, iAttrib, pSelf->pVertices[iAttrib].uv, 2);
+                        break;
+                    default: break;
+                }
+            }
+        }
+
+        // Peek vertices
+        #ifdef MESH_PRINT_GLTF_DATA_VERTICES
+        pSelf->Log(pSelf, "==== checking vertices ====");
+        for (int peekVertices = 0; peekVertices < pSelf->pNumVertices; peekVertices++)
+        {
+            pSelf->Log(pSelf, "Vertex[%d] = Vec3(%.2f, %.2f, %.2f)",
+                       peekVertices,
+                       pSelf->pVertices[peekVertices].x,
+                       pSelf->pVertices[peekVertices].y,
+                       pSelf->pVertices[peekVertices].z);
+        }
+        pSelf->Log(pSelf, "==== done checking vertices ====\n");
+        #endif
+        /* ================= Vertices =================== */
+    }
+
+    pSelf->Log(pSelf, "Loaded mesh %s.\n", meshAt.name);
+
+    TestMesh_private_toCArr(pSelf);
+
+    return cgltf_result_success;
+}
+
 int TestMesh_ReadGLTFAtPath(SELF, const char* path) {
     cgltf_options options = {0};
     cgltf_data* data = NULL;
     cgltf_result result = cgltf_parse_file(&options, path, &data);
-    result = cgltf_load_buffers(&options, data, path);
 
     if (result == cgltf_result_success)
     {
+        result = cgltf_load_buffers(&options, data, path);
+        if(result != cgltf_result_success) {
+            char *resultMsg = NULL;
+            cgltf_result_tostr(result, resultMsg);
+            pSelf->Log(pSelf, "Failed to load asset BUFFERS from '%s'. Result Type: %d (%s)", result, resultMsg);
+
+            // Prevent this from dangling.
+            cgltf_free(data);
+            return result;
+        }
+
         size_t meshCount = data->meshes_count;
-        pSelf->Log(pSelf, "Mesh Count: %u", meshCount);
         if(meshCount > 0) {
+            // Only read the first mesh for now.
             TestMesh_private_ReadMeshAt(pSelf, data, 0);
         }
         
-        // data->meshes
+        // Don't forget to free the data.
 	    cgltf_free(data);
+
+        // Our loading was a success!
         return cgltf_result_success;
     }
     else {
 
+        // Failure, let's grab the reason and report it.
         char *resultMsg = NULL;
         cgltf_result_tostr(result, resultMsg);
 
@@ -426,5 +490,7 @@ int TestMesh_ReadGLTFAtPath(SELF, const char* path) {
         return result;
     }
 }
+
+/* ==================================== END CGLTF ======================================= */
 
 #undef SELF

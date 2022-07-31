@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.0)
 
 set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_STANDARD 11)
 option(Vita "Vita" OFF)
 
 if(Vita)
@@ -28,12 +29,10 @@ set(VITA_VERSION  "01.00")
 
 if(BUILD_VITA)
   set(VITA_MKSFOEX_FLAGS "${VITA_MKSFOEX_FLAGS} -d PARENTAL_LEVEL=1")
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DVITA -g -Wall -O0 -fno-lto -ftree-vectorize")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DVITA -g -Wall -O0 -fno-lto -ftree-vectorize -Wno-missing-braces")
 else()
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}  -g -O0 -fno-lto -ftree-vectorize")  
 endif()
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 
 # Resource Handling

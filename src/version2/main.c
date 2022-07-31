@@ -38,7 +38,8 @@ void doUpdate(VGL3DContext* context, float dt)
 #ifdef VITA
 #include <debugnet.h>
 #ifndef NETDBG_IP_SERVER
-#define NETDBG_IP_SERVER "192.168.1.204"
+// #define NETDBG_IP_SERVER "192.168.1.204"
+#define NETDBG_IP_SERVER "192.168.1.124"
 #endif
 #ifndef NETDBG_PORT_SERVER
 #define NETDBG_PORT_SERVER 18194
@@ -68,12 +69,14 @@ void NetLogForVita_finished_private() {
 
 #define NETLOG_VITA_FINISH() NetLogForVita_finished_private()
 #define VITA_EXAMPLE_TEXTURE    "app0:background2-1.png"
-#define VITA_EXAMPLE_MESH_GLB   "app0:cone_test.glb"
+#define VITA_IDENTITY_CUBE_GLB  "app0:unit_cube.glb"
+#define VITA_EXAMPLE_MESH_GLB   "app0:monkey.glb"
 #else
 // Empty define.
 #define NETLOG_VITA_FINISH()
-#define VITA_EXAMPLE_TEXTURE    "../background2-1.png"
-#define VITA_EXAMPLE_MESH_GLB   "../cone_test_gltf.gltf"
+#define VITA_EXAMPLE_TEXTURE     "../background2-1.png"
+#define VITA_IDENTITY_CUBE_GLB   "../unit_cube.glb"
+#define VITA_EXAMPLE_MESH_GLB    "../monkey.glb"
 #endif
 
 // TODO: Create method that offsets the model via the MVP.
@@ -159,6 +162,7 @@ void SetCamForProjType(VGL3DContext* graphics) {
     }
 }
 
+#ifndef VITA
 static vec3 manualCamPos = {0.f, 0.f, -10.f};
 static vec3 manualCamRot = {0};
 
@@ -182,7 +186,7 @@ void CheckInput_keyboard(TeslaKeyboardInput* kbdInput, VGL3DContext* graphics) {
     }
 
     // Move x/z
-    #define SPEED 8.f
+    #define SPEED 30.f
     if(kbdInput->IsKeyHeld(kbdInput, GLFW_KEY_UP )) {
         manualCamPos[2] -= SPEED * (1 / 120.f);
         graphics->SetCamera(graphics, manualCamPos, manualCamRot);
@@ -192,6 +196,7 @@ void CheckInput_keyboard(TeslaKeyboardInput* kbdInput, VGL3DContext* graphics) {
     }
     #undef SPEED
 }
+#endif
 
 void Test_CubeTest(VGL3DContext* graphics, VTEX thisTex) {
     graphics->BindTexture(graphics, thisTex);
@@ -209,7 +214,8 @@ void Test_PerspectiveSwap_Update(VGL3DContext* graphics, VTEX thisTex) {
     
 }
 
-static TeslaMesh DefaultCube;
+static TeslaMesh ExampleModel;
+static TeslaMesh CubeSkyboxThing;
 void Test_PerspectiveSwap(VGL3DContext* graphics, VTEX thisTex) {
     
     /*
@@ -237,7 +243,7 @@ void Test_PerspectiveSwap(VGL3DContext* graphics, VTEX thisTex) {
     // SetCamForProjType(graphics);
     
     // Test_CubeTest(graphics, thisTex);
-    DefaultCube.Draw(&DefaultCube, graphics);
+    ExampleModel.Draw(&ExampleModel, graphics);
 
     // doUpdate(graphics, 1 / 120.f);
 }
@@ -264,22 +270,40 @@ int main() {
 
     VTEX thisTex = graphics.LoadTextureAt(&graphics, VITA_EXAMPLE_TEXTURE);
 
+    #ifndef VITA
     GLFWwindow* glfwWin = graphics.GetGlfwWindow(&graphics);
     TeslaKeyboardInput keyboard = TKbd_Create();
     keyboard.InitBackend(&keyboard, (struct _GLFWwindow*)glfwWin);
+    #endif
 
-    // Test
-    DefaultCube = TestMesh_Create();
-    DefaultCube.Log(&DefaultCube, "Reading mesh from '%s'...", VITA_EXAMPLE_MESH_GLB);
-    DefaultCube.ReadGLTFAtPath(&DefaultCube, VITA_EXAMPLE_MESH_GLB);
+    // Test (create instances with fn ptrs assigned.)
+    ExampleModel = TestMesh_Create();
+    CubeSkyboxThing = TestMesh_Create();
+    #ifdef VITA
+    // Vita override.
+    graphics.Log = NetLogForVita_private;
+    ExampleModel.Log = NetLogForVita_private;
+    CubeSkyboxThing.Log = NetLogForVita_private;
+    #endif
+
+    ExampleModel.Log(&ExampleModel, "Reading mesh from '%s'...", VITA_EXAMPLE_MESH_GLB);
+    ExampleModel.ReadGLTFAtPath(&ExampleModel, VITA_EXAMPLE_MESH_GLB);
+
+    CubeSkyboxThing.Log(&CubeSkyboxThing, "Reading cube from '%s'...", VITA_IDENTITY_CUBE_GLB);
+    // CubeSkyboxThing.InitWithDefaultCube(&CubeSkyboxThing);
+    CubeSkyboxThing.ReadGLTFAtPath(&CubeSkyboxThing, VITA_IDENTITY_CUBE_GLB);
+    CubeSkyboxThing.private.TextureGpuHandle = thisTex;
+
 
     // bump
     doUpdate(&graphics, 1 / 240.f);
     while(graphics.private.doContinue)
     {
         /* =========== Update ============ */
+    #ifndef VITA
         keyboard.PollInput(&keyboard);
         CheckInput_keyboard(&keyboard, &graphics);
+    #endif
 
         // Update. TODO: actual time keeping
         doUpdate(&graphics, 1 / 240.f);
@@ -289,14 +313,24 @@ int main() {
         graphics.Clear(&graphics);
         graphics.Begin(&graphics);
 
-        
-        DefaultCube.DrawTranslate(
-            &DefaultCube, 
+        ExampleModel.DrawTranslate(
+            &ExampleModel, 
             &graphics, 
             (vec3){0.f, 0.f, 0.f}, 
             (vec3){0.f, 0.f, 0.f}, 
             (vec3){1.f, 1.f, 1.f}
         );
+
+        #define SCALE 100.f
+        CubeSkyboxThing.DrawTranslate(
+            &CubeSkyboxThing,
+            &graphics,
+            (vec3){0.f, 0.f, 0.f},
+            (vec3){0.f, 0.f, 0.f},
+            (vec3){SCALE, SCALE, SCALE}
+            // (vec3){100.f, 100.f, 100.f}
+        );
+        #undef SCALE
 
 
         // Draw other shit here.
@@ -307,11 +341,13 @@ int main() {
 
     // Free mesh resources that we allocated.
     // Since this is stack allocated cube we dont
-    //  need to free the DefaultCube.
-    DefaultCube.DestroySelf(&DefaultCube);
+    //  need to free the ExampleModel.
+    ExampleModel.DestroySelf(&ExampleModel);
 
+    #ifndef VITA
     // Free resources that keyboard may have needed to allocate.
     keyboard.DestroySelf(&keyboard);
+    #endif
 
     // Destroy created texture.
     graphics.DestroyTexture(&graphics, thisTex);
