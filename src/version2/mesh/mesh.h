@@ -20,6 +20,7 @@ typedef struct _Vertex {
 } Vertex;
 
 struct _Mesh    TestMesh_Create();
+struct _Mesh*   TestMesh_CreateHeap();
 int             TestMesh_InitWithVertices(SELF, const Vertex* allocatedVertexData, size_t vertexCount);
 int             TestMesh_InitWithDefaultCube(SELF);
 void            TestMesh_DestroySelf(SELF);

@@ -9,8 +9,8 @@
 static float _CurTime = 0.0f;
 static uint8_t _OpType = 0;
 static int doSpin = 1;
-static TeslaMesh ExampleModel;
-static TeslaMesh CubeSkyboxThing;
+static TeslaMesh* ExampleModel;
+static TeslaMesh* CubeSkyboxThing;
 
 static inline float lerp(float a, float b, float f)
 { return a + f * (b - a); }
@@ -171,10 +171,11 @@ void SetCamForProjType(VGL3DContext* graphics) {
 static vec3 manualCamPos = {0.f, 0.f, -10.f};
 static vec3 manualCamRot = {0};
 
-void CheckInput_keyboard(TeslaKeyboardInput* kbdInput, VGL3DContext* graphics) {
+void CheckInput_keyboard(TeslaKeyboardInput* kbdInput, TestMouse* mouseInput, VGL3DContext* graphics) {
 
+    int mouseHeld = mouseInput->IsButtonHeld(mouseInput, GLFW_MOUSE_BUTTON_1);
     // Spin Model 
-    if(kbdInput->IsKeyHeld(kbdInput, GLFW_KEY_SPACE))
+    if(mouseHeld || kbdInput->IsKeyHeld(kbdInput, GLFW_KEY_SPACE))
         doSpin = 1;
     else
         doSpin = 0;
@@ -255,7 +256,7 @@ void Test_CubeTest(VGL3DContext* graphics, VTEX thisTex) {
 int main() {
     printf("Hello world!\n");
 
-    VGL3DContext graphics = VGL3D_Create();
+    VGL3DContext* graphics = VGL3D_CreateHeap();
 
     #ifdef VITA
     // Override Log function for Vita.
@@ -263,39 +264,40 @@ int main() {
     graphics.Log = NetLogForVita_private;
     #endif
 
-    graphics.InitBackend(&graphics);
-    graphics.Log(&graphics, "LOGS TEST! %d", 69);
-    graphics.SetProjectionType(&graphics, VGL3D_PROJECTION_PERSPECTIVE);
+    graphics->InitBackend(graphics);
+    graphics->Log(graphics, "LOGS TEST! %d", 69);
+    graphics->SetProjectionType(graphics, VGL3D_PROJECTION_PERSPECTIVE);
 
-    VTEX thisTex = graphics.LoadTextureAt(&graphics, VITA_EXAMPLE_TEXTURE);
-    VTEX otherTex = graphics.LoadTextureAt(&graphics, VITA_EXAMPLE_TEXTURE2);
+    VTEX thisTex = graphics->LoadTextureAt(graphics, VITA_EXAMPLE_TEXTURE);
+    VTEX otherTex = graphics->LoadTextureAt(graphics, VITA_EXAMPLE_TEXTURE2);
 
 
-    Input inputMain, inputMouse;
+    Input* inputMain = NULL;
+    Input* inputMouse = NULL;
     #ifndef VITA
-    GLFWwindow* glfwWin = graphics.GetGlfwWindow(&graphics);
-    inputMain = CommonInput_Create(INPUT_TYPE_KEYBOARD);
-    inputMain.pKeyboard.InitBackend((TeslaKeyboardInput*)(&inputMain), (GLFWwindow*)glfwWin);
+    GLFWwindow* glfwWin = graphics->GetGlfwWindow(graphics);
+    inputMain = CommonInput_CreateHeap(INPUT_TYPE_KEYBOARD);
+    inputMain->pKeyboard.InitBackend((TeslaKeyboardInput*)(&inputMain->pBase), (GLFWwindow*)glfwWin);
 
-    inputMouse = CommonInput_Create(INPUT_TYPE_MOUSE);
+    inputMouse = CommonInput_CreateHeap(INPUT_TYPE_MOUSE);
 
-    assert(inputMouse.pMouse.InitBackend != NULL);
-    assert(inputMouse.inputType == INPUT_TYPE_MOUSE);
+    
+    inputMouse->pMouse.IsButtonHeld(&(inputMouse->pMouse), 0);
+    assert(inputMouse->pMouse.InitBackend != NULL);
+    assert(inputMouse->pMouse.IsButtonHeld != NULL);
+    assert(inputMouse->inputType == INPUT_TYPE_MOUSE);
 
-    inputMouse.pMouse.InitBackend((TestMouse*)(&inputMouse.pMouse), glfwWin);
-
+    inputMouse->pMouse.InitBackend((TestMouse*)(&inputMouse->pMouse), glfwWin);
     #else
-    inputMain = CommonInput_Create(INPUT_TYPE_GAMEPAD);
-    inputMain.pBase.InitBackend(&input);
+    // inputMain = CommonInput_Create(INPUT_TYPE_GAMEPAD);
+    // inputMain.pBase.InitBackend(&input);
     #endif
 
 
 
-
-
     // Test (create instances with fn ptrs assigned.)
-    ExampleModel = TestMesh_Create();
-    CubeSkyboxThing = TestMesh_Create();
+    ExampleModel = TestMesh_CreateHeap();
+    CubeSkyboxThing = TestMesh_CreateHeap();
     #ifdef VITA
     // Vita override.
     graphics.Log = NetLogForVita_private;
@@ -304,39 +306,41 @@ int main() {
     #endif
 
 
-    ExampleModel.Log(&ExampleModel, "Reading mesh from '%s'...", VITA_EXAMPLE_MESH_GLB);
-    ExampleModel.ReadGLTFAtPath(&ExampleModel, VITA_EXAMPLE_MESH_GLB);
-    ExampleModel.private.TextureGpuHandle = otherTex;
+    ExampleModel->Log(ExampleModel, "Reading mesh from '%s'...", VITA_EXAMPLE_MESH_GLB);
+    ExampleModel->ReadGLTFAtPath(ExampleModel, VITA_EXAMPLE_MESH_GLB);
+    ExampleModel->private.TextureGpuHandle = otherTex;
 
-    CubeSkyboxThing.Log(&CubeSkyboxThing, "Reading cube from '%s'...", VITA_IDENTITY_CUBE_GLB);
-    // CubeSkyboxThing.InitWithDefaultCube(&CubeSkyboxThing);
-    CubeSkyboxThing.ReadGLTFAtPath(&CubeSkyboxThing, VITA_IDENTITY_CUBE_GLB);
-    CubeSkyboxThing.private.TextureGpuHandle = thisTex;
+    CubeSkyboxThing->Log(CubeSkyboxThing, "Reading cube from '%s'...", VITA_IDENTITY_CUBE_GLB);
+    CubeSkyboxThing->InitWithDefaultCube(CubeSkyboxThing);
+    CubeSkyboxThing->ReadGLTFAtPath(CubeSkyboxThing, VITA_IDENTITY_CUBE_GLB);
+    CubeSkyboxThing->private.TextureGpuHandle = thisTex;
 
 
     // bump
-    doUpdate(&graphics, 1 / 240.f);
-    while(graphics.private.doContinue)
+    doUpdate(graphics, 1 / 240.f);
+    while(graphics->private.doContinue)
     {
         /* =========== Update ============ */
-        inputMain.pBase.PollInput(&inputMain.pBase);
+        inputMain->pBase.PollInput(&inputMain->pBase);
+        inputMouse->pBase.PollInput(&inputMouse->pBase);
 
     #ifndef VITA
-        CheckInput_keyboard(&inputMain.pKeyboard, &graphics);
+        CheckInput_keyboard(&(inputMain->pKeyboard), &(inputMouse->pMouse), graphics);
     #endif
 
         // Update. TODO: actual time keeping
-        doUpdate(&graphics, 1 / 240.f);
+        doUpdate(graphics, 1 / 240.f);
         /* ========= End Update =========== */
 
         /* =========== Graphics ============= */
-        graphics.Clear(&graphics);
-        graphics.Begin(&graphics);
+        graphics->Clear(graphics);
+        graphics->Begin(graphics);
 
+        
         #define SCALE 1.f
-        ExampleModel.DrawTranslate(
-            &ExampleModel, 
-            &graphics, 
+        ExampleModel->DrawTranslate(
+            ExampleModel, 
+            graphics, 
             (vec3){3.f, 0.f, 0.f}, 
             (vec3){0.f, 0.f, 0.f}, 
             (vec3){SCALE, SCALE, SCALE}
@@ -345,34 +349,40 @@ int main() {
         
         #undef SCALE
         #define SCALE 1.f
-        CubeSkyboxThing.DrawTranslate(
-            &CubeSkyboxThing,
-            &graphics,
+        CubeSkyboxThing->DrawTranslate(
+            CubeSkyboxThing,
+            graphics,
             (vec3){0.f, 0.f, 0.f},
             (vec3){0.f, 0.f, 0.f},
             (vec3){SCALE, SCALE, SCALE}
         );
         #undef SCALE
-        
+        graphics->End(graphics);
 
 
         // Draw other shit here.
-
-        graphics.End(&graphics);
         /* ========= End Graphics =========== */
     }
 
     // Free mesh resources that we allocated.
     // Since this is stack allocated cube we dont
     //  need to free the ExampleModel.
-    ExampleModel.DestroySelf(&ExampleModel);
+    ExampleModel->DestroySelf(ExampleModel);
+    CubeSkyboxThing->DestroySelf(ExampleModel);
 
-    inputMain.pBase.DestroySelf(&inputMain.pBase);
+    inputMain->pBase.DestroySelf(&inputMain->pBase);
+    inputMouse->pBase.DestroySelf(&inputMouse->pBase);
+
+    free(ExampleModel);
+    free(CubeSkyboxThing);
+    free(inputMain);
+    free(inputMouse);
 
     // Destroy created texture.
-    graphics.DestroyTexture(&graphics, thisTex);
-    graphics.DestroyBackend(&graphics); // Close the backend.
-    graphics.DestroySelf(&graphics);    // Destroy any other private data here.
+    graphics->DestroyTexture(graphics, thisTex);
+    graphics->DestroyBackend(graphics); // Close the backend.
+    graphics->DestroySelf(graphics);    // Destroy any other private data here.
+    free(graphics);
     NETLOG_VITA_FINISH();
 
     return 0;

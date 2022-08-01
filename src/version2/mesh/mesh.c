@@ -7,6 +7,13 @@
 
 #define SELF TeslaMesh* pSelf
 
+TeslaMesh*   TestMesh_CreateHeap() {
+    TeslaMesh* newMesh = malloc(sizeof(TeslaMesh));
+    *newMesh = TestMesh_Create();
+
+    return newMesh;
+}
+
 TeslaMesh TestMesh_Create() {
     return (TeslaMesh) {
         .pVertices = NULL,
@@ -450,14 +457,19 @@ int TestMesh_private_ReadMeshAt(SELF, cgltf_data* data, uint32_t index) {
 }
 
 int TestMesh_ReadGLTFAtPath(SELF, const char* path) {
+    
+    pSelf->Log(pSelf, "ReadGTLFAtPath");
     cgltf_options options = {0};
     cgltf_data* data = NULL;
     cgltf_result result = cgltf_parse_file(&options, path, &data);
 
     if (result == cgltf_result_success)
     {
+        pSelf->Log(pSelf, "ReadGTLFAtPath parsed successfully!");
         result = cgltf_load_buffers(&options, data, path);
         if(result != cgltf_result_success) {
+
+            pSelf->Log(pSelf, "ReadGTLFAtPath buffers parsed successfully!");
             char *resultMsg = NULL;
             cgltf_result_tostr(result, resultMsg);
             pSelf->Log(pSelf, "Failed to load asset BUFFERS from '%s'. Result Type: %d (%s)", result, resultMsg);

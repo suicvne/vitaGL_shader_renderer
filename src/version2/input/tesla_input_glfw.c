@@ -72,6 +72,9 @@ void Tkdb_KeyCallback_private(GLFWwindow* window, int key, int scancode, int act
 }
 
 int TKdb_InitBackend_glfw(SELF, GLFWwindow* existing) {
+    assert(context != NULL);
+    assert(context->PrivateData != NULL);
+
     if(existing != NULL) {
         context->PrivateData->WindowListening = existing;
         glfwSetKeyCallback(existing, Tkdb_KeyCallback_private);
@@ -93,14 +96,10 @@ void TKdb_DestroySelf_glfw(SELF) {
 void TKdb_PollInput_glfw(SELF) {
     if(context->PrivateData->WindowListening
          != NULL) {
-        glfwMakeContextCurrent(context->PrivateData->WindowListening);
-        glfwPollEvents();
         Tkdb_private_LastKbdCtx = context;
 
         // Check for repeat keys
         for(int i = 0; i < GLFW_KEY_LAST; i++) {
-
-
             if(Tkdb_private_LastKbdCtx->PrivateData->lastKeys[i] == GLFW_PRESS && 
                 Tkdb_private_LastKbdCtx->PrivateData->keys[i] == GLFW_PRESS)
             {

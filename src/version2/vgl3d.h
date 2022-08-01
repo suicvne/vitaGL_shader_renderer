@@ -126,6 +126,7 @@ static inline void VGL3D_SetProjectionType(SELF, VGL3D_ProjectionMatType newMatT
 
 // ------------------------------ Default/reference function signatures. ------------------------------ 
 VGL3DContext    VGL3D_Create();
+VGL3DContext*   VGL3D_CreateHeap();
 void            VGL3D_Begin(SELF);
 void            VGL3D_End(SELF);
 int             VGL3D_InitBackend(SELF);

@@ -52,6 +52,12 @@ vec3 camEyeRot_p = {0.0f, 0.0f, 0.0f};
 GLFWwindow* VGL3D_GetGlfwWindow_glfw(SELF);
 #endif
 
+VGL3DContext*   VGL3D_CreateHeap() {
+    VGL3DContext* newContext = malloc(sizeof(VGL3DContext));
+    *newContext = VGL3D_Create();
+    return newContext;
+}
+
 /**
  * @brief Creates a VGL3DContext on the stack.
  * 
@@ -182,6 +188,7 @@ inline void VGL3D_Begin(SELF) {
     context->private.drawingInProgress = 1;
 
 #ifndef VITA
+    glfwMakeContextCurrent(context->config->game_window);
     context->private.doContinue = !glfwWindowShouldClose(context->config->game_window);
 #endif
     // TODO Maybe?
@@ -199,6 +206,8 @@ inline void VGL3D_Begin(SELF) {
  * * vgl3d_gl2es.c
  */
 inline void VGL3D_End(SELF) {
+    assert(context != NULL);
+    assert(context->config != NULL && context->config->game_window != NULL);
     context->private.drawingInProgress = 0;
 #ifdef VITA
     vglSwapBuffers(GL_FALSE);
@@ -596,16 +605,16 @@ int VGL3D_InitBackend(SELF) {
     glClearColor(0.f, 0.f, 0.5f, 1.0f);
 
     glEnable(GL_TEXTURE_2D);
-
-    glEnable(GL_DEPTH);
-    // glDepthFunc(GL_EQUAL);
-
     glEnable(GL_BLEND);
-
+    glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
-    glFrontFace(GL_CCW);
 
-    // glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glCullFace(GL_CCW);
+    // glDepthFunc(GL_NOTEQUAL);
+    // glDepthMask(GL_FALSE);
+
+    glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
     glViewport(0,0,960,544);
 
     // Generate quadVbo
@@ -815,6 +824,15 @@ void VGL3D_DrawFromVBO(SELF, uint32_t vboHandle, size_t nVertices) {
 }
 
 void VGL3D_DrawFromVBOTranslationIndices(SELF, uint32_t vboHandle, size_t nVertices, vec3 pos, vec3 rot, vec3 scale, uint32_t* indices, size_t nIndices) {
+    assert(vboHandle != 0);
+    assert(nVertices > 0);
+    assert(pos != NULL);
+    assert(rot != NULL);
+    assert(scale != NULL);
+    assert(indices != NULL);
+    assert(nIndices > 0);
+    assert(context != NULL);
+
     mat4 model = GLM_MAT4_IDENTITY_INIT;
     vec4 white = {1.0f, 1.0, 1.0f, 1.0f};
     // TRS -> Translate, Rotate, Scale

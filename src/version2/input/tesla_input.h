@@ -245,7 +245,6 @@ static inline Input CommonInput_Create(InputType inputType) {
             break;
         case INPUT_TYPE_MOUSE:
             newInput.pMouse     = TMouse_Create();
-            assert(newInput.pMouse.InitBackend != NULL);
             break;
         case INPUT_TYPE_TOUCH:
         default:
@@ -259,6 +258,13 @@ static inline Input CommonInput_Create(InputType inputType) {
     if(fail != 0) {
         newInput.pBase.Log(&newInput.pBase, "Not supported yet: %d", inputType);
     }
+
+    return newInput;
+}
+
+static inline Input* CommonInput_CreateHeap(InputType inputType) {
+    Input* newInput = malloc(sizeof(Input));
+    *newInput = CommonInput_Create(inputType);
 
     return newInput;
 }
