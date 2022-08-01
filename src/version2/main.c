@@ -368,7 +368,7 @@ int main() {
     // Since this is stack allocated cube we dont
     //  need to free the ExampleModel.
     ExampleModel->DestroySelf(ExampleModel);
-    CubeSkyboxThing->DestroySelf(ExampleModel);
+    CubeSkyboxThing->DestroySelf(CubeSkyboxThing);
 
     inputMain->pBase.DestroySelf(&inputMain->pBase);
     inputMouse->pBase.DestroySelf(&inputMouse->pBase);

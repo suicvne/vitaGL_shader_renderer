@@ -93,14 +93,16 @@ TestMouse TMouse_Create() {
 
 // #define TMOUSE_INLINE
 #ifdef TMOUSE_INLINE
-    TestMouse tm = (TestMouse){
-        .PrivateData =  malloc(sizeof(TeslaMousePrivate)),
+    // wtf. why does this suddenly fail clang????
+    TestMouse tm = {
         .InitBackend =  TMouse_InitBackend_glfw,
         .DestroySelf =  TMouse_DestroySelf,
         .IsButtonDown = TMouse_IsButtonDown,
         .IsButtonHeld = TMouse_IsButtonHeld,
         .IsButtonUp =   TMouse_IsButtonUp,
-        .pBase.Log =    TInput_Log,
+        .PollInput =    TMouse_PollInput,
+        .pBase.Log =    TInput_Log, // Share common Log functions with the rest of the input module.
+        .PrivateData =  malloc(sizeof(TeslaMousePrivate)),
     };
 #else
     TestMouse tm;
@@ -112,11 +114,11 @@ TestMouse TMouse_Create() {
     tm.IsButtonUp =   TMouse_IsButtonUp;
     tm.PollInput =    TMouse_PollInput;
     tm.pBase.Log =    TInput_Log;
-    
+#endif
+
     tm.PrivateData =  malloc(sizeof(TeslaMousePrivate));    
     memset(tm.PrivateData, 0, sizeof(TeslaMousePrivate));
     tm.PrivateData->mouseButtonsLen = 8;
-#endif
 
     assert(tm.PrivateData != NULL);
     assert(tm.InitBackend != NULL);
