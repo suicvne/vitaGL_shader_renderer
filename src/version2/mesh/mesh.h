@@ -38,11 +38,12 @@ typedef struct _Mesh {
     void        (*DrawTranslate)(SELF, VGL3DContext* graphics, vec3 pos, vec3 rot, vec3 scale);
     int         (*ReadGLTFAtPath)(SELF, const char* path);
 
-    Vertex*     pVertices;
-    uint32_t*   pIndices;
-    size_t      pNumIndices;
-    size_t      pNumVertices;
-    uint8_t     pHasChanged;
+    Vertex*         pVertices;
+    uint32_t*       pIndices;
+    uint32_t        pNumIndices;
+    uint32_t        pNumVertices;
+    uint8_t         pHasChanged:1;
+    uint8_t         pFreeAfterUpload:1;
 
     C_PRIVATE_BEGIN(TestMesh)
     uint32_t    MeshGpuHandle;

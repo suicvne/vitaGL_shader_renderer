@@ -21,6 +21,7 @@ TeslaMesh TestMesh_Create() {
         .pNumIndices = 0,
         .pNumVertices = 0,
         .pHasChanged = 0,
+        .pFreeAfterUpload = 0,
 
         .Log =                  TestMesh_Log,
         .InitWithDefaultCube =  TestMesh_InitWithDefaultCube,
@@ -38,12 +39,21 @@ TeslaMesh TestMesh_Create() {
 
 static inline void TestMesh_private_CheckUploadOrRefresh(SELF, VGL3DContext* graphics) {
     // Have we uploaded the data?
-    if(pSelf->private.MeshGpuHandle == 0 || pSelf->pHasChanged) {
+    if(pSelf->private.MeshGpuHandle == 0 || (pSelf->pHasChanged && !pSelf->pFreeAfterUpload)) {
         pSelf->pHasChanged = 0;
         graphics->Log(graphics, "Mesh is uploading data....");
         // No, we haven't. Let's do that!
         pSelf->private.MeshGpuHandle = 
             graphics->CreateVBOWithVertexData(graphics, (const float*)pSelf->pVertices, pSelf->pNumVertices);
+
+
+        // Extreme optimization.
+        if(pSelf->pFreeAfterUpload && pSelf->pVertices != NULL) {
+            pSelf->Log(pSelf, "(Optimization) Freeing pVertices since they're uploaded to the GPU.");
+            free(pSelf->pVertices);
+
+            pSelf->pVertices = NULL;
+        }
     }
 }
 

@@ -298,6 +298,9 @@ int main() {
     // Test (create instances with fn ptrs assigned.)
     ExampleModel = TestMesh_CreateHeap();
     CubeSkyboxThing = TestMesh_CreateHeap();
+
+    // Extreme optimization.
+    // ExampleModel->pFreeAfterUpload = 1;
     #ifdef VITA
     // Vita override.
     graphics.Log = NetLogForVita_private;
