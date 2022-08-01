@@ -5,6 +5,8 @@
 #include "input/tesla_input.h"
 #include "mesh/mesh.h"
 
+#include "vgl3d_metal/vgl3d_metal_private.h"
+
 
 static float _CurTime = 0.0f;
 static uint8_t _OpType = 0;
@@ -255,6 +257,23 @@ void Test_CubeTest(VGL3DContext* graphics, VTEX thisTex) {
 
 int main() {
     printf("Hello world!\n");
+
+    MulStruct* newMulStruct = MulStruct_CreateHeap();
+
+    int initRes = newMulStruct->InitBackend(newMulStruct);
+
+    printf("Init Result: %d\n", initRes);
+    while(1) {
+        newMulStruct->PollEvents(newMulStruct);
+    }
+
+
+    newMulStruct->DestroySelf(newMulStruct);
+    free(newMulStruct);
+
+    // HelloFromObjC();
+
+    return 0;
 
     VGL3DContext* graphics = VGL3D_CreateHeap();
 

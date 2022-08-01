@@ -1,7 +1,13 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.10)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 11)
+
+#if(APPLE)
+#set(CMAKE_OSX_ARCHITECTURES "arm64" CACHE STRING "Build architectures for Mac OS X" FORCE)
+#set(CMAKE_LIBRARY_ARCHITECTURE "arm64" CACHE STRING "Build architectures for Mac OS X" FORCE)
+#endif()
+
 option(Vita "Vita" OFF)
 
 if(Vita)
@@ -52,7 +58,7 @@ endif()
 
 set(SRC_FILES
   src/version2/main.c
-  src/version2/vgl3d_gl2es.c
+  # src/version2/vgl3d_gl2es.c
   src/version2/mesh/mesh.c
 )
 
@@ -61,7 +67,6 @@ if(VITA)
   list(APPEND SRC_FILES
     src/version2/input/tesla_input_vita.c
   )
-  message("Sources: ${SRC_FILES}")
 else()
   # TODO: Move this whole statement down
   # So we can properly check for GLFW
@@ -70,11 +75,39 @@ else()
     src/version2/input/tesla_input_mouse_glfw.c
     src/version2/input/tesla_input_gamepad_null.c
   )
+  if(APPLE)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fmodules -fno-objc-arc")
+
+    list(APPEND 
+      SRC_FILES 
+      src/version2/vgl3d_metal/vgl3d_metal_private.m
+    )
+
+    message("Sources: ${SRC_FILES}")
+  endif()
 endif()
 
-add_executable(${PROJECT_NAME}
-  ${SRC_FILES}
-)
+if(APPLE)
+  add_executable(${PROJECT_NAME}
+    # MACOSX_BUNDLE
+    ${SRC_FILES}
+  )
+  set_target_properties(${PROJECT_NAME} PROPERTIES
+      BUNDLE True
+      MACOSX_BUNDLE_GUI_IDENTIFIER xyz.mikesantiago.${PROJECT_NAME}
+      MACOSX_BUNDLE_BUNDLE_NAME ${PROJECT_NAME}
+      MACOSX_BUNDLE_BUNDLE_VERSION "0.1"
+      MACOSX_BUNDLE_SHORT_VERSION_STRING "0.1"
+  )
+else()
+  add_executable(${PROJECT_NAME}
+    ${SRC_FILES}
+  )
+endif()
+
+if(APPLE)
+  target_compile_definitions(${PROJECT_NAME} PUBLIC -DRENDERER_METAL)
+endif()
 
 if(CMAKE_BUILD_TYPE MATCHES Debug)
   message("Debug.")
@@ -114,6 +147,7 @@ endif()
 
 if(APPLE)
   message("--- LINKING LIBRARIES FOR MACOS!")
+
   list(APPEND CMAKE_PREFIX_PATH "/usr/local")
   
   find_library(GLFW glfw)
@@ -143,6 +177,7 @@ if(APPLE)
   target_include_directories(${PROJECT_NAME} PUBLIC ${GLEW_INCLUDE_DIRS})
 
   target_link_libraries(${PROJECT_NAME}
+    "-framework Foundation"
     "-framework CoreVideo"
     "-framework OpenGL"
     "-framework IOKit"

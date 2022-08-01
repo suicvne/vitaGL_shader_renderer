@@ -5,9 +5,12 @@ extern "C" {
 #ifndef __VGL_3D_H__
 #define __VGL_3D_H__
 
-#if defined(__APPLE__) || defined(PC_BUILD) 
+#if defined(__APPLE__) || defined(PC_BUILD)
+
+#ifndef RENDERER_METAL
 // glew header
 #include <GL/glew.h>
+#endif
 #ifndef __APPLE__
 // GL header for Linux and presumably Windows. Dunno.
 #include <GL/gl.h>
