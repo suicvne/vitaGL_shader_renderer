@@ -67,6 +67,7 @@ else()
   # So we can properly check for GLFW
   list(APPEND SRC_FILES
     src/version2/input/tesla_input_glfw.c
+    src/version2/input/tesla_input_mouse_glfw.c
     src/version2/input/tesla_input_gamepad_null.c
   )
 endif()

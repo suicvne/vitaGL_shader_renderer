@@ -1,6 +1,23 @@
 #ifndef __TESLA_INPUT_H__
 #define __TESLA_INPUT_H__
 
+#include <assert.h>
+
+/**
+ * @file tesla_input.h
+ * @author Michael Santiago (admin@ignoresolutions.xyz)
+ * @brief  Header file describing components of an Input interface.
+ * 
+ * Defines: InputBaseClass containing standard input module functions.
+ * 
+ * 
+ * @version 0.1
+ * @date 2022-07-31
+ * 
+ * @copyright Copyright (c) 2022
+ * 
+ */
+
 #include "../common.h"
 
 /**
@@ -92,14 +109,16 @@ CREATE_LOG_FN(SELF context, TInput, "TeslaInput");
 #undef SELF
 #define SELF struct _TeslaGamepad* context
 struct _TeslaGamepadPrivate;
+
 /**
  * @brief TeslaGamepadInput is a fancy vtable.
  * These are your API functions! Call them on this structure to make your life easy.
  * 
  * These functions can also be overriden per platform.
+ * 
+ * This structure is a union of InputBaseClass and its own function pointers.
  */
 typedef struct _TeslaGamepad {
-
 union {
     InputBaseClass pBase;
     struct {
@@ -112,27 +131,24 @@ union {
         int     (*IsButtonHeld)(SELF, uint32_t btn);
     };
 };
-
     struct _TeslaGamepadPrivate *PrivateData;
-
 } TeslaGamepadInput;
 
 #undef SELF
 
 #ifndef VITA
-struct _GLFWwindow;
+struct GLFWwindow;
 #endif
 
 #undef SELF
 #define SELF struct _TeslaKeyboard* context
 
 typedef struct _TeslaKeyboard {
-
 union {
     InputBaseClass   pBase;
     struct {
 #ifndef VITA
-        int         (*InitBackend)(SELF, struct _GLFWwindow* window);
+        int         (*InitBackend)(SELF, struct GLFWwindow* window);
 #else // Default signature.
         int         (*InitBackend)(SELF);
 #endif
@@ -144,9 +160,7 @@ union {
         int         (*IsKeyHeld)(SELF, uint32_t key);
     };
 };
-
-    struct _TeslaKdbPrivate *PrivateData;
-
+struct _TeslaKdbPrivate *PrivateData;
 } TeslaKeyboardInput;
 
 #undef SELF
@@ -156,7 +170,7 @@ typedef struct _TeslaMouse {
 union {
     InputBaseClass pBase;
     struct {
-        int     (*InitBackend)(SELF);
+        int     (*InitBackend)(SELF, struct GLFWwindow* existing);
         void    (*DestroySelf)(SELF);
         void    (*Log)(SELF, const char* fmt, ...);
         void    (*PollInput)(SELF);
@@ -165,6 +179,7 @@ union {
         int     (*IsButtonHeld)(SELF, uint32_t btn);
     };
 };
+    struct _TeslaMousePrivate* PrivateData;
 } TestMouse;
 
 #undef SELF
@@ -185,16 +200,31 @@ union {
 };
 } TestTouch;
 
+/* ========== Default Constructor Functions ============== */
 TeslaGamepadInput    TInput_Create();
 TeslaKeyboardInput   TKbd_Create();
+TestMouse            TMouse_Create();
+/* ========== Default Constructor Functions ============== */
 
+/**
+ * @brief Tesla Input Interface.
+ * 
+ * Defines a polymorphic union of the main Tesla Input types:
+ *  - TeslaKeyboardInput
+ *  - TestMouse
+ *  - TestTouch
+ *  - TeslaGamepadInput
+ * 
+ * Following this union is an enum defining the type of input this supports.
+ * 
+ */
 typedef struct _Input {
     union {
         InputBaseClass               pBase;
-        TeslaKeyboardInput      pKeyboard;
-        TestMouse               pMouse;
-        TestTouch               pTouch;
-        TeslaGamepadInput       pGamepad;
+        TeslaKeyboardInput           pKeyboard;
+        TestMouse                    pMouse;
+        TestTouch                    pTouch;
+        TeslaGamepadInput            pGamepad;
     };
     InputType inputType;
 } Input;
@@ -204,6 +234,7 @@ static inline Input CommonInput_Create(InputType inputType) {
     Input newInput; // Declare union struct
     newInput.inputType = inputType; // Set union struct type.
 
+    int fail = 0;
     // Variable constructor.
     switch(inputType) {
         case INPUT_TYPE_GAMEPAD:
@@ -213,14 +244,21 @@ static inline Input CommonInput_Create(InputType inputType) {
             newInput.pKeyboard  = TKbd_Create();
             break;
         case INPUT_TYPE_MOUSE:
+            newInput.pMouse     = TMouse_Create();
+            assert(newInput.pMouse.InitBackend != NULL);
+            break;
         case INPUT_TYPE_TOUCH:
         default:
-            newInput.pBase.Log(&newInput.pBase, "Oh no, this is not supported.");
+            fail = 1;
             break;
     }
 
     // Set base log function for convenience.
     newInput.pBase.Log = TInput_Log;
+
+    if(fail != 0) {
+        newInput.pBase.Log(&newInput.pBase, "Not supported yet: %d", inputType);
+    }
 
     return newInput;
 }

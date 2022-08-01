@@ -25,7 +25,7 @@ int TKdb_InitBackend_glfw(SELF, GLFWwindow* existing);
 TeslaKeyboardInput TKbd_Create() {
     TeslaKeyboardInput kbdInput = {
         .PrivateData =  malloc(sizeof(TeslaKdbPrivate)),
-        .InitBackend =  (int (*)(struct _TeslaKeyboard *, struct _GLFWwindow *))TKdb_InitBackend_glfw,
+        .InitBackend =  (int (*)(struct _TeslaKeyboard *, GLFWwindow*))TKdb_InitBackend_glfw,
         .DestroySelf =  TKdb_DestroySelf_glfw,
         .PollInput =    TKdb_PollInput_glfw,
         .IsKeyDown =    TKdb_IsKeyDown_glfw,
@@ -34,7 +34,6 @@ TeslaKeyboardInput TKbd_Create() {
     };
 
     // kbdInput.pBase.Log = TInput_Log;
-
     assert((void*)kbdInput.pBase.Log == (void*)kbdInput.Log);
 
     // assert(kbdInput.pBase.InitBackend == kbdInput.InitBackend);
@@ -67,10 +66,9 @@ void Tkdb_KeyCallback_private(GLFWwindow* window, int key, int scancode, int act
     }
     else { 
         // TInput_Log(NULL, "ACTION SET");
-        
+        Tkdb_private_LastKbdCtx->PrivateData->keys[key] = action;
     }
 
-    Tkdb_private_LastKbdCtx->PrivateData->keys[key] = action;
 }
 
 int TKdb_InitBackend_glfw(SELF, GLFWwindow* existing) {

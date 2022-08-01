@@ -271,14 +271,22 @@ int main() {
     VTEX otherTex = graphics.LoadTextureAt(&graphics, VITA_EXAMPLE_TEXTURE2);
 
 
-    Input input;
+    Input inputMain, inputMouse;
     #ifndef VITA
     GLFWwindow* glfwWin = graphics.GetGlfwWindow(&graphics);
-    input = CommonInput_Create(INPUT_TYPE_KEYBOARD);
-    input.pKeyboard.InitBackend((TeslaKeyboardInput*)(&input), (struct _GLFWwindow*)glfwWin);
+    inputMain = CommonInput_Create(INPUT_TYPE_KEYBOARD);
+    inputMain.pKeyboard.InitBackend((TeslaKeyboardInput*)(&inputMain), (GLFWwindow*)glfwWin);
+
+    inputMouse = CommonInput_Create(INPUT_TYPE_MOUSE);
+
+    assert(inputMouse.pMouse.InitBackend != NULL);
+    assert(inputMouse.inputType == INPUT_TYPE_MOUSE);
+
+    inputMouse.pMouse.InitBackend((TestMouse*)(&inputMouse.pMouse), glfwWin);
+
     #else
-    input = CommonInput_Create(INPUT_TYPE_GAMEPAD);
-    input.pBase.InitBackend(&input);
+    inputMain = CommonInput_Create(INPUT_TYPE_GAMEPAD);
+    inputMain.pBase.InitBackend(&input);
     #endif
 
 
@@ -311,10 +319,10 @@ int main() {
     while(graphics.private.doContinue)
     {
         /* =========== Update ============ */
-        input.pBase.PollInput(&input.pBase);
+        inputMain.pBase.PollInput(&inputMain.pBase);
 
     #ifndef VITA
-        CheckInput_keyboard(&input.pKeyboard, &graphics);
+        CheckInput_keyboard(&inputMain.pKeyboard, &graphics);
     #endif
 
         // Update. TODO: actual time keeping
@@ -359,7 +367,7 @@ int main() {
     //  need to free the ExampleModel.
     ExampleModel.DestroySelf(&ExampleModel);
 
-    input.pBase.DestroySelf(&input.pBase);
+    inputMain.pBase.DestroySelf(&inputMain.pBase);
 
     // Destroy created texture.
     graphics.DestroyTexture(&graphics, thisTex);

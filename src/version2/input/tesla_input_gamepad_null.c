@@ -19,6 +19,6 @@ TeslaGamepadInput TInput_Create() {
         .IsButtonHeld = NullInput_IsButtonDown,
         .IsButtonUp   = NullInput_IsButtonDown,
         .PollInput =    NullInput_PollInput,
-        .PrivateData =  NULL
+        .PrivateData =  NULL,
     };
 }
