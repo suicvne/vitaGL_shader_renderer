@@ -596,10 +596,11 @@ int VGL3D_InitBackend(SELF) {
     glClearColor(0.f, 0.f, 0.5f, 1.0f);
 
     glEnable(GL_TEXTURE_2D);
+
     glEnable(GL_DEPTH);
+    // glDepthFunc(GL_EQUAL);
 
     glEnable(GL_BLEND);
-    glDepthFunc(GL_EQUAL);
 
     glEnable(GL_CULL_FACE);
     glFrontFace(GL_CCW);
