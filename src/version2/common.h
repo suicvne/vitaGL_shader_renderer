@@ -5,6 +5,11 @@
 #include <stdlib.h>
 #include <stdarg.h>
 
+#ifdef __APPLE__
+// #include <Foundation/Foundation.h>
+// #define COMMON_PRINTF NSLog
+#endif
+
 #define CREATE_LOG_FN(SELF_TYPEDEF, FN_PREFIX, LOG_PREFIX)\
 static inline void FN_PREFIX##_Log(SELF_TYPEDEF, const char *fmt, ...){\
     char buffer[2048];\

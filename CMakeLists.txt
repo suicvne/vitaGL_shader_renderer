@@ -81,6 +81,7 @@ else()
 
     list(APPEND 
       SRC_FILES 
+      src/version2/vgl3d_metal/mul/mul.m
       src/version2/vgl3d_metal/vgl3d_metal_private.m
     )
 
@@ -178,6 +179,9 @@ if(APPLE)
   target_include_directories(${PROJECT_NAME} PUBLIC ${GLEW_INCLUDE_DIRS})
 
   target_link_libraries(${PROJECT_NAME}
+    "-framework CoreGraphics"
+    "-framework MetalKit"
+    "-framework Metal"
     "-framework Foundation"
     "-framework CoreVideo"
     "-framework OpenGL"

@@ -5,6 +5,7 @@
 #include "input/tesla_input.h"
 #include "mesh/mesh.h"
 
+#include "vgl3d_metal/mul/mul.h"
 #include "vgl3d_metal/vgl3d_metal_private.h"
 
 
@@ -264,16 +265,17 @@ int main() {
     int initRes = newMulStruct->InitBackend(newMulStruct);
 
     printf("Init Result: %d\n", initRes);
+
+    newMulStruct->SetWindowTitle(newMulStruct, "HELLO WORLD!!!");
+    newMulStruct->SetWindowUnifiedTitleBar(newMulStruct, 1);
     while(1) {
+        newMulStruct->RenderTest(newMulStruct);
         newMulStruct->PollEvents(newMulStruct);
     }
 
 
     newMulStruct->DestroySelf(newMulStruct);
     free(newMulStruct);
-    
-
-    // HelloFromObjC();
 
     return 0;
 
