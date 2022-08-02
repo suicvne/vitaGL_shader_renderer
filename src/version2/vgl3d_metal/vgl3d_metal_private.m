@@ -37,7 +37,8 @@ inline MulStruct MulStruct_Create() {
         .InitBackend = MulStruct_InitBackend,
         .DestroySelf = MulStruct_DestroySelf,
         .PollEvents =  MulStruct_PollEvents,
-        .private.metalLayer = NULL
+        .private.metalLayer = NULL,
+        .private.myWindow =   NULL,
     };
 }
 
