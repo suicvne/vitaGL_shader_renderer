@@ -258,6 +258,7 @@ void Test_CubeTest(VGL3DContext* graphics, VTEX thisTex) {
 int main() {
     printf("Hello world!\n");
 
+    
     MulStruct* newMulStruct = MulStruct_CreateHeap();
 
     int initRes = newMulStruct->InitBackend(newMulStruct);
@@ -270,6 +271,7 @@ int main() {
 
     newMulStruct->DestroySelf(newMulStruct);
     free(newMulStruct);
+    
 
     // HelloFromObjC();
 

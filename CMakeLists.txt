@@ -58,7 +58,7 @@ endif()
 
 set(SRC_FILES
   src/version2/main.c
-  # src/version2/vgl3d_gl2es.c
+  src/version2/vgl3d_gl2es.c
   src/version2/mesh/mesh.c
 )
 
@@ -76,7 +76,8 @@ else()
     src/version2/input/tesla_input_gamepad_null.c
   )
   if(APPLE)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fmodules -fno-objc-arc")
+    enable_language(OBJC)
+    set(CMAKE_OBJC_FLAGS "${CMAKE_OBJC_FLAGS} -fmodules -fno-objc-arc")
 
     list(APPEND 
       SRC_FILES 
@@ -92,13 +93,13 @@ if(APPLE)
     # MACOSX_BUNDLE
     ${SRC_FILES}
   )
-  set_target_properties(${PROJECT_NAME} PROPERTIES
-      BUNDLE True
-      MACOSX_BUNDLE_GUI_IDENTIFIER xyz.mikesantiago.${PROJECT_NAME}
-      MACOSX_BUNDLE_BUNDLE_NAME ${PROJECT_NAME}
-      MACOSX_BUNDLE_BUNDLE_VERSION "0.1"
-      MACOSX_BUNDLE_SHORT_VERSION_STRING "0.1"
-  )
+  # set_target_properties(${PROJECT_NAME} PROPERTIES
+  #     BUNDLE True
+  #     MACOSX_BUNDLE_GUI_IDENTIFIER xyz.mikesantiago.${PROJECT_NAME}
+  #     MACOSX_BUNDLE_BUNDLE_NAME ${PROJECT_NAME}
+  #     MACOSX_BUNDLE_BUNDLE_VERSION "0.1"
+  #     MACOSX_BUNDLE_SHORT_VERSION_STRING "0.1"
+  # )
 else()
   add_executable(${PROJECT_NAME}
     ${SRC_FILES}
@@ -106,7 +107,7 @@ else()
 endif()
 
 if(APPLE)
-  target_compile_definitions(${PROJECT_NAME} PUBLIC -DRENDERER_METAL)
+  # target_compile_definitions(${PROJECT_NAME} PUBLIC -DRENDERER_METAL)
 endif()
 
 if(CMAKE_BUILD_TYPE MATCHES Debug)

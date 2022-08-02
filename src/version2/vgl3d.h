@@ -7,19 +7,32 @@ extern "C" {
 
 #if defined(__APPLE__) || defined(PC_BUILD)
 
+// Metal
 #ifndef RENDERER_METAL
+
 // glew header
 #include <GL/glew.h>
+// glfw header
+#include <GLFW/glfw3.h>
+
+#include <OpenGL/gl.h>
+#include <OpenGL/glu.h>
+
 #endif
+// Metal
+
+// GL header for PCs
 #ifndef __APPLE__
 // GL header for Linux and presumably Windows. Dunno.
 #include <GL/gl.h>
 #else
 // glu header for Apple Mac OS X.
-#include <OpenGL/glu.h>
+// #include <OpenGL/gl.h>
+// #include <OpenGL/gl3.h>
+// #include <OpenGL/glu.h>
 #endif
-// glfw header
-#include <GLFW/glfw3.h>
+
+
 #else
 // PS Vita headers.
 #include <vitasdk.h>
