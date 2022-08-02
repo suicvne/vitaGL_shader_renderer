@@ -57,23 +57,23 @@ if(BUILD_VITA)
 endif()
 
 set(SRC_FILES
-  src/version2/main.c
-  src/version2/vgl3d_gl2es.c
-  src/version2/mesh/mesh.c
+  src/main.c
+  src/vgl3d/vgl3d_gl2es.c
+  src/vgl3d/mesh/mesh.c
 )
 
 if(VITA)
   # PS Vita platform specifics.
   list(APPEND SRC_FILES
-    src/version2/input/tesla_input_vita.c
+    src/vgl3d/input/tesla_input_vita.c
   )
 else()
   # TODO: Move this whole statement down
   # So we can properly check for GLFW
   list(APPEND SRC_FILES
-    src/version2/input/tesla_input_glfw.c
-    src/version2/input/tesla_input_mouse_glfw.c
-    src/version2/input/tesla_input_gamepad_null.c
+    src/vgl3d/input/tesla_input_glfw.c
+    src/vgl3d/input/tesla_input_mouse_glfw.c
+    src/vgl3d/input/tesla_input_gamepad_null.c
   )
   if(APPLE)
     enable_language(OBJC)
@@ -81,8 +81,8 @@ else()
 
     list(APPEND 
       SRC_FILES 
-      src/version2/vgl3d_metal/mul/mul.m
-      src/version2/vgl3d_metal/vgl3d_metal_private.m
+      src/vgl3d/vgl3d_metal/mul/mul.m
+      src/vgl3d/vgl3d_metal/vgl3d_metal_private.m
     )
 
     message("Sources: ${SRC_FILES}")
@@ -91,7 +91,7 @@ endif()
 
 if(APPLE)
   add_executable(${PROJECT_NAME}
-    # MACOSX_BUNDLE
+    MACOSX_BUNDLE
     ${SRC_FILES}
   )
   # set_target_properties(${PROJECT_NAME} PROPERTIES

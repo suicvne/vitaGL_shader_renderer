@@ -1,674 +1,415 @@
 #include <stdio.h>
-#include <math.h>
 #include <assert.h>
 
-#define __BASIC_MAP_IMPL_
-#include "basic_hash_map.h"
+#include "vgl3d/vgl3d.h"
+#include "vgl3d/input/tesla_input.h"
+#include "vgl3d/mesh/mesh.h"
+
+#include "vgl3d/vgl3d_metal/mul/mul.h"
+#include "vgl3d/vgl3d_metal/vgl3d_metal_private.h"
 
 
-#include "vgl_renderer.h"
-#include "load_texture.h"
-#include "SHADERS.h"
+static float _CurTime = 0.0f;
+static uint8_t _OpType = 0;
+static int doSpin = 1;
+static TeslaMesh* ExampleModel;
+static TeslaMesh* CubeSkyboxThing;
 
+static inline float lerp(float a, float b, float f)
+{ return a + f * (b - a); }
 
-#define DISPLAY_WIDTH_DEF 960.f
-#define DISPLAY_HEIGHT_DEF 544.f
+void doUpdate(VGL3DContext* context, float dt)
+{
+    if(!doSpin) return;
+    _CurTime += dt;
+
+    if(_CurTime > 1.0f)
+        _CurTime = 0.f;
+
+    // Manipulate the camera.
+    vec3 closePos = {0.0f, 0.0f, -10.0f};
+
+    // vec3 closeRot = { -30.0f, 0.0f, 0.0f };
+    // vec3 farRot = { -20.0f, 360.f, 20.0f };
+    vec3 closeRot = { 0.0f, 0.0f, 0.0f };
+    vec3 farRot = { 0.0f, 360.f, 0.0f };
+    vec3 lerpedRot = { 0 };
+
+    glm_vec3_lerp(closeRot, farRot, _CurTime, lerpedRot);
+
+    // Update camera position.
+    context->SetCamera(context, closePos, lerpedRot);
+}
 
 #ifdef VITA
 #include <debugnet.h>
 #ifndef NETDBG_IP_SERVER
-#define NETDBG_IP_SERVER "192.168.0.22"
+// #define NETDBG_IP_SERVER "192.168.1.204"
+#define NETDBG_IP_SERVER "192.168.1.124"
 #endif
 #ifndef NETDBG_PORT_SERVER
 #define NETDBG_PORT_SERVER 18194
 #endif
-
-static char __string_buffer[512] = {0};
-#endif
-
-void debugPrintf(const char* path, ...)
-{
-#if VITA
-    va_list argptr;
-    va_start(argptr, path);
-    vsprintf(__string_buffer, path, argptr);
-    va_end(argptr);
-
-    debugNetPrintf(DEBUG, __string_buffer);
-#else
-    va_list argptr;
-    va_start(argptr, path);
-    vfprintf(stdout, path, argptr);
-    va_end(argptr);
-#endif
-}
-
-typedef struct RectF
-{
-    double left, right;
-    double top, bottom;
-} RectF;
-
-static inline RectF PixelSpaceToGLSpace(float x, float y, float w, float h, float screen_w, float screen_h)
-{
-    float screen_w_half = screen_w / 2;
-    float screen_h_half = screen_h / 2;
-
-    return 
-    (RectF)
-    {
-        // left
-        .left = (  (roundf(x) / screen_w_half) - 1.0f                       ),
-        // top
-        .top = (  ((screen_h - roundf(y)) / screen_h_half) - 1.0f          ),
-        // right
-        .right = (  (roundf(x + w) / screen_w_half) - 1.0f                   ),
-        // bottom
-        .bottom = (  ((screen_h - roundf(y + h)) / screen_h_half) - 1.0f          ),
-    };
-}
-
-const GLint _scr_offset_x = (DISPLAY_WIDTH_DEF);
-const GLint _scr_offset_y = (DISPLAY_HEIGHT_DEF);
-
-static GLuint Texture_1 = 0;
-static GLint _tex_1_w = 0;
-static GLint _tex_1_h = 0;
-
-float _ticks = 0;
-
-typedef struct _e
-{
-    float x;
-    float y;
-    float w; 
-    float h;
-    float speed;
-    char enabled;
-
-    float tex_w, tex_h;
-    
-    // Contains pivot, scale, and rot data along with texture ID.
-    obj_extra_data *ex_data;
-} _entity;
-
-#ifndef ENTITY_COUNT
-#define ENTITY_COUNT 1024
-#endif
-
-_entity _test_entities[ENTITY_COUNT];
-_entity _test_texture_entities[11];
-
-int min(int a, int b)
-{
-    return (a < b) ? a : b;
-}
-
-int init_debug()
-{
-#ifdef VITA
-    return debugNetInit(NETDBG_IP_SERVER, NETDBG_PORT_SERVER, DEBUG);
-    
-#else
-    return 0;
-#endif
-}
-
-void init_entities()
-{
-    for(int i = 0; i < ENTITY_COUNT; i++)
-    {
-        _test_entities[i].x = rand() % 1000;
-        _test_entities[i].y = rand() % 1000;
-        _test_entities[i].w = (rand() % 4) * 16.f;
-        _test_entities[i].h = (rand() % 4) * 16.f;
-        _test_entities[i].speed = min(((rand() % 2) / 2.f) * 2.f, 1.0f);
-
-        // Setup ex_data
-        _test_entities[i].ex_data = (obj_extra_data *)malloc(sizeof(obj_extra_data));
-        memset(_test_entities[i].ex_data, 0, sizeof(obj_extra_data));
-        _test_entities[i].ex_data->scale = 1.f;
-    }
-}
-
-void free_entities()
-{
-    for(int i = 0; i < ENTITY_COUNT; i++)
-    {
-        free(_test_entities[i].ex_data);
-    }
-}
-
-void update_entities(float _ticks)
-{
-    for(int i = 0; i < ENTITY_COUNT; i++)
-    {
-        _test_entities[i].x += (_test_entities[i].speed * ((rand() % 2) == 1 ? -1 : 1) * _ticks) / _ticks;
-        _test_entities[i].y += (_test_entities[i].speed * ((rand() % 2) == 1 ? -1 : 1) * _ticks) / _ticks;
-        
-        _test_entities[i].ex_data->piv_x = _test_entities[i].x + (_test_entities[i].w * .5f);
-        _test_entities[i].ex_data->piv_y = _test_entities[i].y + (_test_entities[i].h * .5f);
-        _test_entities[i].ex_data->scale = sinf(_ticks * .1f) * 4.f;
-        
-
-        if(_test_entities[i].x > DISPLAY_WIDTH_DEF)
-            _test_entities[i].x = DISPLAY_WIDTH_DEF;
-        else if(_test_entities[i].x < 0)
-            _test_entities[i].x = 0;
-
-        if(_test_entities[i].y > DISPLAY_HEIGHT_DEF)
-            _test_entities[i].y = DISPLAY_HEIGHT_DEF;
-        else if(_test_entities[i].y < 0)
-            _test_entities[i].y = 0;
-    }
-}
-
-void render_entities()
-{
-    /*
-    for(int i = 0; i < ENTITY_COUNT; i++)
-    {
-        Vita_DrawTextureAnimColorExData(
-            _test_entities[i].x, _test_entities[i].y,
-            _test_entities[i].w, _test_entities[i].h,
-            Texture_1, _tex_1_w, _tex_1_h,
-            0, 0, 16.f, 32.f,
-            fabs(sin(_ticks)),
-            fabs(sin(_ticks)),
-            fabs(sin(_ticks)),
-            1.f,
-            _test_entities[i].ex_data
-        );
-    }
-    */
-}
-
-#ifdef VITA
-static const char *_texture_1_path = "app0:bobomb_red.png";
-static const char *_vertex_shader = "app0:vert.cgv";
-static const char *_frag_shader = "app0:frag.cgf";
-
-static const char *_path_prefix = "app0:";
-#else
-static const char *_texture_1_path = "../bobomb_red.png";
-static const char *_vertex_shader = "../vert.glsl";
-static const char *_frag_shader = "../frag.glsl";
-
-static const char *_frag2_shader = "../frag_mm_shadow.glsl";
-
-
-static const char *_path_prefix = "../";
-#endif
-
-#define _textures_size 11
-static const char *_textures[_textures_size] = 
-{
-    "bobomb_red.png", // 0
-    "bobomb_black.png", // 1 
-    "background2-1.png", // 2
-    "background2-2.png", // 3
-    "block-4.png", // 4
-    "block-26.png", // 5
-    "block-188.png", // 6
-    "effect-1.png", // 7
-    "effect-51.png", // 8
-    "mario-4.png", // 9
-    "npc-24.png" // 10
-};
-
-static GLuint _textures_gl[_textures_size];
-
-
-int test_print_texture_path()
-{
-    debugPrintf("---Test Printing Textures---\n");
-
-    for(int i = 0; i < _textures_size; i++)
-    {
-        printf("[%d] `%s`\n", i, _textures[i]);
+static uint8_t VitaNetLogInitialized_private = 0;
+void NetLogForVita_private(VGL3DContext* context, const char *fmt, ...) {
+    // Lazy initialized.
+    if(!VitaNetLogInitialized_private) {
+        debugNetInit(NETDBG_IP_SERVER, NETDBG_PORT_SERVER, DEBUG);
+        VitaNetLogInitialized_private = 1;
     }
 
-    return 0;
-}
 
-int test_load_test_textures()
-{
     char buffer[2048];
-    const int buffer_size = 2048;
-    void* tex_buffer;
-    int channels = 0, w = 0, h = 0;
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(buffer, 2048, fmt, args);
+    debugNetPrintf(DEBUG, "[VGL3DLog] %s\n", buffer);
+    va_end(args);
+}
 
-    // Vita_LoadTextureBuffer(_texture_1_path, &tex_buffer, &_tex_1_w, &_tex_1_h, &channels, (void*)debugPrintf);
+void NetLogForVita_finished_private() {
+    if(VitaNetLogInitialized_private) {
+        debugNetFinish();
+    }
+}
 
-    for(int i = 0; i < _textures_size; i++)
-    {
-        // glGenTextures(1, &(_textures_gl[i]));
-        snprintf(buffer, buffer_size, "%s%s", _path_prefix, _textures[i]);
-        Vita_LoadTextureBuffer(buffer, &tex_buffer, &w, &h, &channels, (void *)debugPrintf);
-
-        _textures_gl[i] = Vita_LoadTextureGL(tex_buffer, w, h, (void*)debugPrintf);
-
-        if(_test_texture_entities[i].ex_data != NULL)
-        {
-            _test_texture_entities[i].tex_w = (float)w;
-            _test_texture_entities[i].tex_h = (float)h;
-            _test_texture_entities[i].ex_data->textureID = _textures_gl[i];
-#ifdef DEBUG_BUILD
-            debugPrintf(
-                "Setting tex data to: ID: %u; size: (%.1f x %.1f). size returned: (%d x %d)\n\n\n", 
-                _test_texture_entities[i].ex_data->textureID,
-                _test_texture_entities[i].tex_w,
-                _test_texture_entities[i].tex_h,
-                w, h
-            );
+#define NETLOG_VITA_FINISH() NetLogForVita_finished_private()
+#define VITA_EXAMPLE_TEXTURE     "app0:background2-1.png"
+#define VITA_EXAMPLE_TEXTURE2    "app0:block-26.png"
+#define VITA_IDENTITY_CUBE_GLB   "app0:unit_cube.glb"
+#define VITA_EXAMPLE_MESH_GLB    "app0:monkey.glb"
+#else
+// Empty define.
+#define NETLOG_VITA_FINISH()
+#define VITA_EXAMPLE_TEXTURE     "../background2-1.png"
+#define VITA_EXAMPLE_TEXTURE2    "../block-26.png"
+#define VITA_IDENTITY_CUBE_GLB   "../unit_cube.glb"
+#define VITA_EXAMPLE_MESH_GLB    "../monkey.glb"
 #endif
-        }
-#ifdef DEBUG_BUILD
-        else debugPrintf("WARNING: _test_texture_entities at %d dosn't have ex_data.\n");
-#endif
-        memset(buffer, 0, buffer_size);
+
+// TODO: Create method that offsets the model via the MVP.
+void DrawCube(VGL3DContext* context, vec3 pos) {
+    const float SCALE = 1.0f;
+        /** Draw Sides **/
+        context->DrawQuad(context, 
+            0.f + pos[0], 0.f + pos[1], -1.f + pos[2], 
+            (vec3){0.f, 0.f, 0.f}, 
+            (vec3){SCALE,SCALE,SCALE}, 
+            (vec4){1.0f, 1.0f, 1.0f, 1.0f}
+        );
+        context->DrawQuad(context, 
+            -0.5f + pos[0], 0.f + pos[1], -0.5f + pos[2], 
+            (vec3){0.f, 90.f, 0.f}, 
+            (vec3){SCALE,SCALE,SCALE},
+            (vec4){1.0f, 1.0f, 1.0f, 1.0f}
+        );
         
-    }
-
-    if(tex_buffer != NULL)
-        free(tex_buffer);
-    
-    glBindTexture(GL_TEXTURE_2D, 0);
-
-    return 0;
-}
-
-int init_texture_test_entities()
-{
-    for(int i = 0; i < _textures_size; i++)
-    {
-        _test_texture_entities[i].enabled = 1;
-        _test_texture_entities[i].x = 129 * i;
-        _test_texture_entities[i].y = 129 * i;
-
-        _test_texture_entities[i].w = 256;
-        _test_texture_entities[i].h = 256;
-        _test_texture_entities[i].ex_data = malloc(sizeof(obj_extra_data));
+        context->DrawQuad(context, 
+            0.f + pos[0], 0.f + pos[1], 0.f + pos[2], 
+            (vec3){0.f, 180.f, 0.f}, 
+            (vec3){SCALE,SCALE,SCALE},
+            (vec4){1.0f, 1.0f, 1.0f, 1.0f}
+        );
+        context->DrawQuad(context, 
+            0.5f + pos[0], 0.f + pos[1], -0.5f + pos[2], 
+            (vec3){0.f, 270.f, 0.f}, 
+            (vec3){SCALE,SCALE,SCALE},
+            (vec4){1.0f, 1.0f, 1.0f, 1.0f}
+        );
+        /** End Draw Sides **/
         
-        _test_texture_entities[i].ex_data->piv_x = 0;
-        _test_texture_entities[i].ex_data->piv_y = 0;
-        _test_texture_entities[i].ex_data->rot_x = 0;
-        _test_texture_entities[i].ex_data->rot_y = 0;
-        _test_texture_entities[i].ex_data->rot_z = 0;
-        _test_texture_entities[i].ex_data->scale = 1.f;
-    }
+        // Top
+        context->DrawQuad(context, 
+            0.f + pos[0], 1.5f + pos[1], -0.5f + pos[2], 
+            (vec3){90.f, 0.f, 0.f}, 
+            (vec3){SCALE,SCALE,SCALE},
+            (vec4){0.0f,0.5f,0.f,1.0f}
+        );
 
-    return 0;
+        // Bottom
+        context->DrawQuad(context, 
+            0.f + pos[0], 0.5f + pos[1], -0.5f + pos[2], 
+            (vec3){90.f, 0.f, 0.f}, 
+            (vec3){SCALE,SCALE,SCALE},
+            (vec4){0.0f,1.f,0.f,1.0f}
+        );
 }
 
-int assign_texIDs_texture_test_entities()
-{
-    for(int i = 0; i < _textures_size; i++)
-    {
-        _test_texture_entities[i].ex_data->textureID = _textures_gl[i];
-    }
-    return 0;
-}
+void PrintCurProjectionType(VGL3DContext* graphics) {
+    char* projTypeStr = NULL;
 
-static obj_extra_data test_sprite_3 = 
-(obj_extra_data)
-{
-    0,
-    (DISPLAY_WIDTH_DEF / 2) + 100, (DISPLAY_HEIGHT_DEF / 2) + 100,
-    0.f, 0.f, 0.f,
-    1.f
-};
+    #define PROJ_MAT_PROP_CASE(ENMV, STORAGE)\
+    case (ENMV): STORAGE = #ENMV;break;\
 
-
-int draw_texture_test_entities()
-{
-    float n_src_x, n_src_x2, n_src_y, n_src_y2;
-    RectF normalized_coords;
-
-    for(int i = 0; i < 11; i++)
-    {
-        _entity e = _test_texture_entities[i];
-
-        // debugPrintf("Draw Test Entity: %.1f, %.1f (%.1f x %.1f) Tex ID: %d; Tex Size: (%.2f x %.2f)\n", e.x, e.y, e.w, e.h, e.ex_data->textureID, e.tex_w, e.tex_h);
-        
-        // debugPrintf("Tex ID: %d Tex Size: %.2f x %.2f\n", e_d.textureID, e.tex_w, e.tex_h);
-
-        // if(i == 4)
-        // {
-        //     for(int x = 0; x < 300; x++)
-        //     {
-        //         Vita_DrawTextureAnimColorExData(x * 32.f, (x % 600) + (sinf(_ticks) * 64.f), 32.f, 32.f, e.ex_data->textureID,
-        //             e.tex_w, e.tex_h, 0, 0, 32.f, 32.f, 1.f, 1.f, 1.f, 1.f, e.ex_data);
-        //     }
-        //     continue;   
-        // }
-        if(i == 2)
-        {
-            normalized_coords = PixelSpaceToGLSpace(e.x, e.y, e.w, e.h, DISPLAY_WIDTH_DEF, DISPLAY_HEIGHT_DEF);
-
-            Vita_DrawTextureAnimColorExData(
-                normalized_coords.left, 
-                normalized_coords.top, 
-                normalized_coords.right - normalized_coords.left, 
-                normalized_coords.bottom - normalized_coords.top, 
-                e.ex_data->textureID, 1008.f, 500.f, 0.f, 0.f, 1008.f, 500.f, 1.f, 1.f, 1.f, 1.f, e.ex_data
-            );
-        }
-    }
-}
-
-int bm_test()
-{
-    const int map_size = 8;
-    bm_map_t *new_map = create_basic_map(map_size);
-
-    assert(new_map != NULL);
-    assert(new_map->__last_id == 0);
-    assert(new_map->tracked_elements == 0);
-    assert(new_map->max_elements == map_size);
-    assert(new_map->map != NULL);
-
-    
-    bm_key_t *test_key = put_basic_map(new_map, (void *)_frag_shader);
-    assert(test_key != NULL);
-    debugPrintf("[bm_test] test_key->id is %u\n", test_key->id);
-    // assert(test_key->id > -1);
-    assert(test_key->obj_ptr != NULL);
-    assert(((const char*)test_key->obj_ptr) == _frag_shader);
-    debugPrintf("[bm_test] String value of test_key ptr: `%s`\n", (const char*)(test_key->obj_ptr));
-    assert(new_map->tracked_elements > 0);
-    assert(new_map->tracked_elements != new_map->max_elements);
-
-    bm_key_t *test_key_2 = get_at_basic_map(new_map, 0);
-    assert(test_key_2 != NULL);
-    assert(test_key_2->id == test_key->id);
-    assert(test_key_2->obj_ptr == test_key->obj_ptr);
-
-    bm_key_t *test_key_3 = get_by_id_basic_map(new_map, test_key->id);
-
-    assert(test_key_3 != NULL);
-    assert(test_key_3->id == test_key->id);
-    assert(test_key_3->obj_ptr == test_key->obj_ptr);
-
-    return 0;
-}
-
-static obj_extra_data test_data_1 = 
-(obj_extra_data)
-{
-    0,
-    256 + 128.f, 256 + 128.f,
-    0.f, 0.f, 0.f,
-    1.f
-};
-
-static obj_extra_data test_sprite_1 = 
-(obj_extra_data)
-{
-    0,
-    (DISPLAY_WIDTH_DEF / 2) + 100, (DISPLAY_HEIGHT_DEF / 2) + 100,
-    0.f, 0.f, 0.f,
-    1.f
-};
-
-static obj_extra_data test_sprite_2 = 
-(obj_extra_data)
-{
-    0,
-    (DISPLAY_WIDTH_DEF / 2) + 100, (DISPLAY_HEIGHT_DEF / 2) + 100,
-    0.f, 0.f, 0.f,
-    1.f
-};
-
-short should_render_overlay = 1;
-
-float rgba[4][4] = 
-{
-    {0.f, 0.f, 0.f, .75f},
-    {1.f, 0.f, 0.f, .75f},
-    {0.f, 1.f, 0.f, .75f},
-    {0.f, 0.f, 1.f, .75f}
-};
-
-static inline float clampf(float a, float min, float max)
-{
-    if(a > max)
-        return max;
-    if(a < min)
-        return min;
-    return a;
-}
-
-void render_overlay()
-{
-    rgba[0][0] = clampf(sinf(_ticks), 0.f, 1.f);
-
-    rgba[1][0] = clampf(sinf(_ticks), 0.f, 1.f);
-
-    rgba[2][0] = clampf(sinf(_ticks), 0.f, 1.f);
-
-    rgba[3][0] = clampf(sinf(_ticks), 0.f, .5f);
-
-    RectF normalized_coords = 
-        PixelSpaceToGLSpace(10, 10, DISPLAY_WIDTH_DEF - 20, DISPLAY_HEIGHT_DEF - 20, DISPLAY_WIDTH_DEF, DISPLAY_HEIGHT_DEF);
-    
-    Vita_DrawRect4xColor(
-        normalized_coords.left, 
-        normalized_coords.top, 
-        normalized_coords.right - normalized_coords.left, 
-        normalized_coords.bottom - normalized_coords.top, 
-        rgba[0], rgba[1], rgba[2], rgba[3]
-    );
-}
-
-int main()
-{
-
-
-    init_debug();
-    test_print_texture_path();
-
-    initGL(debugPrintf);
-
-    int retVal = 0;
-    char *vert_shader = malloc(2), *frag_shader = malloc(2);
-    size_t vert_shader_size, frag_shader_size;
-
-    retVal = _Vita_ReadShaderFromFile(_vertex_shader, &vert_shader_size, &vert_shader);
-    if(retVal != 0)
-    {
-        debugPrintf("ERROR: Could not load shader from %s\n", _vertex_shader);
-        return -1;
-    }
-    debugPrintf("-----------------\n%s\n----------------\n", vert_shader);
-
-    retVal = _Vita_ReadShaderFromFile(_frag_shader, &frag_shader_size, &frag_shader);
-    if(retVal != 0)
-    {
-        debugPrintf("ERROR: Could not load frag shader from %s\n", _frag_shader);
-        return -1;
-    }
-    debugPrintf("-----------------\n%s\n----------------\n", frag_shader);
-
-    int shadingErrorCode = 0;
-
-    if((shadingErrorCode = initGLShading2(vert_shader, frag_shader)) != 0)
-    {
-        debugPrintf("ERROR INIT GL SHADING! %d\n", shadingErrorCode);
-        return -1;
+    switch(graphics->private.projectionMatrixType) {
+        PROJ_MAT_PROP_CASE(VGL3D_PROJECTION_ORTHOGRAPHIC, projTypeStr)
+        PROJ_MAT_PROP_CASE(VGL3D_PROJECTION_PERSPECTIVE, projTypeStr)
+        PROJ_MAT_PROP_CASE(VGL3D_PROJECTION_IDENTITY, projTypeStr)
+        default: projTypeStr = "VGL3D_PROJECTION_UNKNOWN";
     }
 
-    free(vert_shader);
-    free(frag_shader);
-    
-    initGLAdv();
+    graphics->Log(graphics, "New Projection Type: %s (%d)\n", projTypeStr, graphics->private.projectionMatrixType);
 
-    init_texture_test_entities();
-    test_load_test_textures();
-    assign_texIDs_texture_test_entities();
-    
+    #undef PROJ_MAT_PROP_CASE
+}
 
+void SetCamForProjType(VGL3DContext* graphics) {
+
+    const vec3 defaultPerspPos = {0.0f, 0.0f, -10.0f};
+    const vec3 defaultPerspRot = { -30.0f, 0.0f, 0.0f };
+
+    switch(graphics->private.projectionMatrixType) {
+        case VGL3D_PROJECTION_PERSPECTIVE:
+            graphics->SetCamera(graphics, (float*)defaultPerspPos, (float*)defaultPerspRot);
+            break;
+        case VGL3D_PROJECTION_ORTHOGRAPHIC:
+        case VGL3D_PROJECTION_IDENTITY:
+        default:
+            graphics->SetCamera(graphics, (vec3){0.0f, 0.0f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f});        
+            break;
+    }
+}
 
 #ifndef VITA
+static vec3 manualCamPos = {0.f, 0.f, -10.f};
+static vec3 manualCamRot = {0};
 
-    char *frag2 = malloc(2);
-    size_t frag2_size;
-    retVal = _Vita_ReadShaderFromFile(_frag2_shader, &frag2_size, &frag2);
-    if(retVal != 0)
-    {
-        debugPrintf("ERROR: Could not load frag shader 2.");
-    }
+void CheckInput_keyboard(TeslaKeyboardInput* kbdInput, TestMouse* mouseInput, VGL3DContext* graphics) {
+
+    int mouseHeld = mouseInput->IsButtonHeld(mouseInput, GLFW_MOUSE_BUTTON_1);
+    // Spin Model 
+    if(mouseHeld || kbdInput->IsKeyHeld(kbdInput, GLFW_KEY_SPACE))
+        doSpin = 1;
     else
+        doSpin = 0;
+
+    // Switch Projection Type.
+    if(kbdInput->IsKeyDown(kbdInput, GLFW_KEY_P)) {
+
+        // Increment
+        VGL3D_ProjectionMatType nextType = graphics->private.projectionMatrixType+1;
+        if(nextType == VGL3D_PROJECTION_LAST) nextType = VGL3D_PROJECTION_IDENTITY;
+
+        graphics->SetProjectionType(graphics, nextType);
+        PrintCurProjectionType(graphics);
+    }
+
+    // Move x/z
+    #define SPEED 30.f
+    #define SPEED_VAL (SPEED) * (1 / 120.f)
+    #define UPDATE_CAM() graphics->SetCamera(graphics, manualCamPos, manualCamRot)
+
+    if(kbdInput->IsKeyHeld(kbdInput, GLFW_KEY_W )) {
+        manualCamPos[2] += SPEED_VAL;
+        UPDATE_CAM();
+    } else if(kbdInput->IsKeyHeld(kbdInput, GLFW_KEY_S)) {
+        manualCamPos[2] -= SPEED_VAL;
+        UPDATE_CAM();
+    }
+
+    if(kbdInput->IsKeyHeld(kbdInput, GLFW_KEY_A)) {
+        manualCamPos[0] += SPEED_VAL;
+        UPDATE_CAM();
+    } else if(kbdInput->IsKeyHeld(kbdInput, GLFW_KEY_D)) {
+        manualCamPos[0] -= SPEED_VAL;
+        UPDATE_CAM();
+    }
+
+    if(kbdInput->IsKeyHeld(kbdInput, GLFW_KEY_LEFT)) {
+        manualCamRot[1] += SPEED_VAL;
+        UPDATE_CAM();
+    } else if(kbdInput->IsKeyHeld(kbdInput, GLFW_KEY_RIGHT)) {
+        manualCamRot[1] -= SPEED_VAL;
+        UPDATE_CAM();
+    }
+
+    if(kbdInput->IsKeyHeld(kbdInput, GLFW_KEY_UP)) {
+        manualCamRot[0] += SPEED_VAL;
+        UPDATE_CAM();
+    } else if(kbdInput->IsKeyHeld(kbdInput, GLFW_KEY_DOWN)) {
+        manualCamRot[0] -= SPEED_VAL;
+        UPDATE_CAM();
+    }
+
+    if(kbdInput->IsKeyHeld(kbdInput, GLFW_KEY_Z)) {
+        manualCamRot[2] += SPEED_VAL;
+        UPDATE_CAM();
+    } else if(kbdInput->IsKeyHeld(kbdInput, GLFW_KEY_X)) {
+        manualCamRot[2] -= SPEED_VAL;
+        UPDATE_CAM();
+    }
+
+    #undef SPEED_VAL
+    #undef SPEED
+}
+#endif
+
+void Test_CubeTest(VGL3DContext* graphics, VTEX thisTex) {
+    graphics->BindTexture(graphics, thisTex);
+
+    for (int x = 0; x < 20; x++)
     {
-        debugPrintf("-----------------\n%s\n----------------\n", frag2);
-        if(Vita_AddShaderPass(NULL, frag2, -1) != 0)
+        for (int z = 0; z < 20; z++)
         {
-            debugPrintf("No secondary shader.\n");
-            return -1;
+            DrawCube(graphics, (vec3){x * 1.0f, 0.f, z * 1.0f});
         }
     }
+}
 
-#endif
-    void* tex_buffer = malloc(8);
-    int channels = 0;
+int main() {
+    printf("Hello world!\n");
 
-    Vita_LoadTextureBuffer(_texture_1_path, &tex_buffer, &_tex_1_w, &_tex_1_h, &channels, (void*)debugPrintf);
-    debugPrintf("[main] tex_buffer: %p\n", tex_buffer);
-
-    Texture_1 = Vita_LoadTextureGL(tex_buffer, _tex_1_w, _tex_1_h, (void*)debugPrintf);
-    if(Texture_1 == 0)
-    {
-        debugPrintf("Texture_1 failed to load: Returned %d for ID.\n", Texture_1);
-        deInitGL();
-        return -1;
-    }
-    else free(tex_buffer);
-
-    init_entities();
-
-    Vita_SetClearColor(.3f, .8f, .1f, 1.f);
     
+    MulStruct* newMulStruct = MulStruct_CreateHeap();
 
-    int run = 1;
+    int initRes = newMulStruct->InitBackend(newMulStruct);
 
-    while(run == 1)
-    {
-        // clear current vbo
-        Vita_Clear();
+    printf("Init Result: %d\n", initRes);
 
-
-        RectF normalized_cache = 
-            PixelSpaceToGLSpace(
-                fabs(cos(_ticks * .5f) * (300)) + 4, 
-                4, 
-                32, 
-                32, 
-                DISPLAY_WIDTH_DEF, DISPLAY_HEIGHT_DEF);
-
-        Vita_DrawRectColor(
-            normalized_cache.left, 
-            normalized_cache.top, 
-            normalized_cache.right - normalized_cache.left, 
-            normalized_cache.bottom - normalized_cache.top, 
-            0.f, 0.f, 0.f, 1.f
-        );
-
-        normalized_cache = 
-            PixelSpaceToGLSpace(
-                0, 
-                0, 
-                128.f, 
-                128.f, 
-                DISPLAY_WIDTH_DEF, DISPLAY_HEIGHT_DEF
-            );
-        
-        Vita_DrawRectColor(
-            normalized_cache.left, 
-            normalized_cache.top, 
-            normalized_cache.right - normalized_cache.left, 
-            normalized_cache.bottom - normalized_cache.top, 
-            0.f, 0.f, 0.f, 1.f
-        );
-
-
-/*
-        Vita_Draw(fabs(cos(_ticks * .5f) * (300 + 0)), 0, 32, 32);
-
-        Vita_DrawRectColor(fabs(cos(_ticks * .5f) * (300 + 20)) + 4, 36, 64, 64, .2f, .2f, .2f, .58f);
-        Vita_Draw(fabs(cos(_ticks * .5f) * (300 + 20)), 32, 64, 64);
-
-        Vita_DrawRectColor(fabs(cos(_ticks * .5f) * (300 + 40)) + 4, (sin(_ticks) * (32 + 64)) + 4, 128, 128, .2f, .2f, .2f, .58f);
-        Vita_Draw(fabs(cos(_ticks * .5f) * (300 + 40)), (sin(_ticks) * (32 + 64)) , 128, 128);
-
-        test_data_1.rot_z = sin((_ticks * .2f)) * 360.f;
-*/
-
-        /*
-        Vita_DrawRectColorExData(
-            256.f, 256.f,
-            256.f, 256.f,
-            1.f, 0.f, 0.f, 1.0f,
-            &test_data_1 // sin((_ticks * .2f)) * 360.f (rotation)
-        );
-        
-        float _scale_w = sin(_ticks) * (64.f * 2);
-        float _scale_h = cos(_ticks) * (128.f * 2);
-        float _half_w = _scale_w * .5f;
-        float _half_h = _scale_h * .5f;
-
-        test_sprite_1.scale = 1;
-        test_sprite_2.scale = 1;
-
-        test_sprite_1.rot_z = sin((_ticks * .2f)) * 360.f;
-        */
-
-        /*
-        Vita_DrawTextureAnimColorExData(
-            (DISPLAY_WIDTH_DEF / 2) - _half_w, // screen x
-            (DISPLAY_HEIGHT_DEF / 2) - _half_h, // screen y
-            128.f, 128.f, // W & H on screen.
-            Texture_1, _tex_1_w, _tex_1_h, // Tex ID, tex w, tex h
-            0, 0, 16, 32, // Src X, Src Y, Src W, Src H
-            1.f, 1.f, 1.f, 1.f, // Color,
-            &test_sprite_1
-        ); 
-
-        Vita_DrawTextureAnimColorExData(
-            (DISPLAY_WIDTH_DEF / 2) - _half_w - 100, // screen x
-            (DISPLAY_HEIGHT_DEF / 2) - _half_h - 100, // screen y
-            _scale_w, _scale_h, // W & H on screen.
-            Texture_1, _tex_1_w, _tex_1_h, // Tex ID, tex w, tex h
-            0, 0, 16, 32, // Src X, Src Y, Src W, Src H
-            1.f, 1.f, 1.f, 1.f, // Color
-            &test_sprite_2 // sin((_ticks * .2f)) * 360.f // Rot.
-        ); 
-        */
-
-        // draw_texture_test_entities();
-
-        render_entities();
-
-        render_overlay();
-
-        draw_texture_test_entities();
-
-        
-        
-
-        // Vita_DrawRectColorRot(0, 0, 9.5f, 9.5f, 0.f, 1.f, 0.f, 0.2f, 1.0f);
-
-
-        // Draw from vbo, swap to next vbo
-        Vita_Repaint();
-#ifdef VITA
-        _ticks += .077f;
-#else
-        _ticks += 0.0077f;
-#endif
-
-        update_entities(_ticks);
+    newMulStruct->SetWindowTitle(newMulStruct, "HELLO WORLD!!!");
+    newMulStruct->SetWindowUnifiedTitleBar(newMulStruct, 1);
+    while(1) {
+        newMulStruct->RenderTest(newMulStruct);
+        newMulStruct->PollEvents(newMulStruct);
     }
 
+
+    newMulStruct->DestroySelf(newMulStruct);
+    free(newMulStruct);
+
+    return 0;
+
+    VGL3DContext* graphics = VGL3D_CreateHeap();
+
+    #ifdef VITA
+    // Override Log function for Vita.
+    // Redirect logs into debugNet instead of general Vita stdout.
+    graphics.Log = NetLogForVita_private;
+    #endif
+
+    graphics->InitBackend(graphics);
+    graphics->Log(graphics, "LOGS TEST! %d", 69);
+    graphics->SetProjectionType(graphics, VGL3D_PROJECTION_PERSPECTIVE);
+
+    VTEX thisTex = graphics->LoadTextureAt(graphics, VITA_EXAMPLE_TEXTURE);
+    VTEX otherTex = graphics->LoadTextureAt(graphics, VITA_EXAMPLE_TEXTURE2);
+
+
+    Input* inputMain = NULL;
+    Input* inputMouse = NULL;
+    #ifndef VITA
+    GLFWwindow* glfwWin = graphics->GetGlfwWindow(graphics);
+    inputMain = CommonInput_CreateHeap(INPUT_TYPE_KEYBOARD);
+    inputMain->pKeyboard.InitBackend((TeslaKeyboardInput*)(&inputMain->pBase), (GLFWwindow*)glfwWin);
+
+    inputMouse = CommonInput_CreateHeap(INPUT_TYPE_MOUSE);
+
+    
+    inputMouse->pMouse.IsButtonHeld(&(inputMouse->pMouse), 0);
+    assert(inputMouse->pMouse.InitBackend != NULL);
+    assert(inputMouse->pMouse.IsButtonHeld != NULL);
+    assert(inputMouse->inputType == INPUT_TYPE_MOUSE);
+
+    inputMouse->pMouse.InitBackend((TestMouse*)(&inputMouse->pMouse), glfwWin);
+    #else
+    // inputMain = CommonInput_Create(INPUT_TYPE_GAMEPAD);
+    // inputMain.pBase.InitBackend(&input);
+    #endif
+
+
+
+    // Test (create instances with fn ptrs assigned.)
+    ExampleModel = TestMesh_CreateHeap();
+    CubeSkyboxThing = TestMesh_CreateHeap();
+
+    // Extreme optimization.
+    // ExampleModel->pFreeAfterUpload = 1;
+    #ifdef VITA
+    // Vita override.
+    graphics.Log = NetLogForVita_private;
+    ExampleModel.Log = NetLogForVita_private;
+    CubeSkyboxThing.Log = NetLogForVita_private;
+    #endif
+
+
+    ExampleModel->Log(ExampleModel, "Reading mesh from '%s'...", VITA_EXAMPLE_MESH_GLB);
+    ExampleModel->ReadGLTFAtPath(ExampleModel, VITA_EXAMPLE_MESH_GLB);
+    ExampleModel->private.TextureGpuHandle = otherTex;
+
+    CubeSkyboxThing->Log(CubeSkyboxThing, "Reading cube from '%s'...", VITA_IDENTITY_CUBE_GLB);
+    CubeSkyboxThing->InitWithDefaultCube(CubeSkyboxThing);
+    CubeSkyboxThing->ReadGLTFAtPath(CubeSkyboxThing, VITA_IDENTITY_CUBE_GLB);
+    CubeSkyboxThing->private.TextureGpuHandle = thisTex;
+
+
+    // bump
+    doUpdate(graphics, 1 / 240.f);
+    while(graphics->private.doContinue)
+    {
+        /* =========== Update ============ */
+        inputMain->pBase.PollInput(&inputMain->pBase);
+        inputMouse->pBase.PollInput(&inputMouse->pBase);
+
+    #ifndef VITA
+        CheckInput_keyboard(&(inputMain->pKeyboard), &(inputMouse->pMouse), graphics);
+    #endif
+
+        // Update. TODO: actual time keeping
+        doUpdate(graphics, 1 / 240.f);
+        /* ========= End Update =========== */
+
+        /* =========== Graphics ============= */
+        graphics->Clear(graphics);
+        graphics->Begin(graphics);
+
+        
+        #define SCALE 1.f
+        ExampleModel->DrawTranslate(
+            ExampleModel, 
+            graphics, 
+            (vec3){3.f, 0.f, 0.f}, 
+            (vec3){0.f, 0.f, 0.f}, 
+            (vec3){SCALE, SCALE, SCALE}
+        );
+
+        
+        #undef SCALE
+        #define SCALE 1.f
+        CubeSkyboxThing->DrawTranslate(
+            CubeSkyboxThing,
+            graphics,
+            (vec3){0.f, 0.f, 0.f},
+            (vec3){0.f, 0.f, 0.f},
+            (vec3){SCALE, SCALE, SCALE}
+        );
+        #undef SCALE
+        graphics->End(graphics);
+
+
+        // Draw other shit here.
+        /* ========= End Graphics =========== */
+    }
+
+    // Free mesh resources that we allocated.
+    // Since this is stack allocated cube we dont
+    //  need to free the ExampleModel.
+    ExampleModel->DestroySelf(ExampleModel);
+    CubeSkyboxThing->DestroySelf(CubeSkyboxThing);
+
+    inputMain->pBase.DestroySelf(&inputMain->pBase);
+    inputMouse->pBase.DestroySelf(&inputMouse->pBase);
+
+    free(ExampleModel);
+    free(CubeSkyboxThing);
+    free(inputMain);
+    free(inputMouse);
+
+    // Destroy created texture.
+    graphics->DestroyTexture(graphics, thisTex);
+    graphics->DestroyBackend(graphics); // Close the backend.
+    graphics->DestroySelf(graphics);    // Destroy any other private data here.
+    free(graphics);
+    NETLOG_VITA_FINISH();
 
     return 0;
 }
